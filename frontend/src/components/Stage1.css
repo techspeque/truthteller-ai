@@ -1,0 +1,137 @@
+.stage {
+  margin: 24px 0;
+  padding: 20px;
+  background: var(--bg-surface-alt);
+  border-radius: 8px;
+  border: 1px solid var(--border-color);
+}
+
+.stage-title {
+  margin: 0 0 16px 0;
+  color: var(--text-primary);
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.tabs {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 16px;
+  flex-wrap: wrap;
+}
+
+.tab {
+  padding: 8px 16px;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-subtle);
+  border-radius: 6px 6px 0 0;
+  color: var(--text-secondary);
+  cursor: pointer;
+  font-size: 14px;
+  transition: all 0.2s;
+}
+
+.tab:hover {
+  background: var(--bg-muted);
+  color: var(--text-primary);
+  border-color: var(--border-accent);
+}
+
+.tab.active {
+  background: var(--bg-elevated);
+  color: var(--text-accent);
+  border-color: var(--border-accent);
+  border-bottom-color: var(--bg-elevated);
+  font-weight: 600;
+}
+
+.tab-failed {
+  color: var(--text-danger) !important;
+  border-color: var(--border-danger) !important;
+  background: var(--bg-danger-soft) !important;
+  cursor: default !important;
+  opacity: 0.7;
+}
+
+.tab-content {
+  background: var(--bg-elevated);
+  padding: 16px;
+  border-radius: 6px;
+  border: 1px solid var(--border-color);
+}
+
+.failed-details {
+  margin-bottom: 12px;
+  padding: 10px 12px;
+  border: 1px solid var(--border-danger);
+  border-radius: 6px;
+  background: var(--bg-danger-soft);
+}
+
+.failed-detail-row {
+  display: grid;
+  gap: 2px;
+  margin-bottom: 8px;
+}
+
+.failed-detail-row:last-child {
+  margin-bottom: 0;
+}
+
+.failed-model-name {
+  font-family: monospace;
+  font-size: 12px;
+  color: var(--text-danger);
+}
+
+.failed-model-reason {
+  font-size: 12px;
+  color: var(--text-secondary);
+  word-break: break-word;
+}
+
+.tab-content-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+.model-name {
+  color: var(--text-muted);
+  font-size: 12px;
+  font-family: monospace;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.token-badge {
+  font-size: 11px;
+  color: var(--text-secondary);
+  background: var(--bg-muted);
+  padding: 1px 6px;
+  border-radius: 3px;
+}
+
+.copy-btn {
+  background: none;
+  border: 1px solid var(--border-subtle);
+  color: var(--text-muted);
+  font-size: 11px;
+  cursor: pointer;
+  padding: 3px 10px;
+  border-radius: 4px;
+  transition: all 0.2s;
+}
+
+.copy-btn:hover {
+  background: var(--bg-muted);
+  color: var(--text-primary);
+  border-color: var(--border-strong);
+}
+
+.response-text {
+  color: var(--text-primary);
+  line-height: 1.6;
+}

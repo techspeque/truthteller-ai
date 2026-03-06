@@ -1,0 +1,21 @@
+# Rust build artifacts
+target/
+
+# Keys and secrets
+.env
+
+# Data files (conversations, uploads, config)
+data/
+
+# Node.js
+node_modules/
+
+# Next.js
+.next/
+out/
+
+# OS files
+.DS_Store
+
+# Other
+docs/

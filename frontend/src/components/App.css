@@ -1,0 +1,91 @@
+* {
+  box-sizing: border-box;
+}
+
+.app {
+  --bg-body: #f5f5f5;
+  --bg-app: #ffffff;
+  --bg-surface: #f8f8f8;
+  --bg-surface-alt: #fafafa;
+  --bg-elevated: #ffffff;
+  --bg-muted: #f0f0f0;
+  --bg-subtle: #f9fafb;
+  --bg-accent-soft: #f0f7ff;
+  --bg-success-soft: #f0fff0;
+  --bg-warning-soft: #fff7ed;
+  --bg-danger-soft: #fef2f2;
+  --text-primary: #333333;
+  --text-secondary: #666666;
+  --text-muted: #888888;
+  --text-accent: #4a90e2;
+  --text-accent-strong: #2a7ae2;
+  --text-success: #2d8a2d;
+  --text-warning: #c2410c;
+  --text-danger: #dc2626;
+  --text-on-primary: #ffffff;
+  --border-color: #e0e0e0;
+  --border-subtle: #d0d0d0;
+  --border-strong: #999999;
+  --border-accent: #4a90e2;
+  --border-accent-soft: #d0e7ff;
+  --border-success: #c8e6c8;
+  --border-warning: #fed7aa;
+  --border-danger: #fecaca;
+  --btn-primary-bg: #4a90e2;
+  --btn-primary-hover: #357abd;
+  --overlay-bg: rgba(0, 0, 0, 0.4);
+  --shadow-elevated: 0 8px 32px rgba(0, 0, 0, 0.2);
+  --danger-bg: #fee2e2;
+  --danger-strong: #b42318;
+  --danger-hover-bg: #fef2f2;
+  --focus-ring: 0 0 0 3px rgba(74, 144, 226, 0.1);
+
+  display: flex;
+  height: 100vh;
+  width: 100vw;
+  overflow: hidden;
+  background: var(--bg-app);
+  color: var(--text-primary);
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
+    'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
+    sans-serif;
+}
+
+.app.theme-dark {
+  --bg-body: #0b1220;
+  --bg-app: #0f172a;
+  --bg-surface: #111827;
+  --bg-surface-alt: #0f1a2e;
+  --bg-elevated: #111827;
+  --bg-muted: #1f2937;
+  --bg-subtle: #111827;
+  --bg-accent-soft: #172554;
+  --bg-success-soft: #12261a;
+  --bg-warning-soft: #2a1d12;
+  --bg-danger-soft: #3a1a1a;
+  --text-primary: #e5e7eb;
+  --text-secondary: #cbd5e1;
+  --text-muted: #94a3b8;
+  --text-accent: #60a5fa;
+  --text-accent-strong: #93c5fd;
+  --text-success: #4ade80;
+  --text-warning: #fdba74;
+  --text-danger: #fca5a5;
+  --text-on-primary: #e5e7eb;
+  --border-color: #334155;
+  --border-subtle: #475569;
+  --border-strong: #64748b;
+  --border-accent: #60a5fa;
+  --border-accent-soft: #1e3a8a;
+  --border-success: #166534;
+  --border-warning: #9a3412;
+  --border-danger: #7f1d1d;
+  --btn-primary-bg: #2563eb;
+  --btn-primary-hover: #1d4ed8;
+  --overlay-bg: rgba(2, 6, 23, 0.7);
+  --shadow-elevated: 0 8px 32px rgba(2, 6, 23, 0.45);
+  --danger-bg: #3f1d1d;
+  --danger-strong: #fca5a5;
+  --danger-hover-bg: #4b1d1d;
+  --focus-ring: 0 0 0 3px rgba(96, 165, 250, 0.22);
+}

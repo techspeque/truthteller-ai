@@ -1,0 +1,41 @@
+{
+  "$schema": "https://raw.githubusercontent.com/nicollasricas/vscode-tauri/refs/heads/main/schemas/tauri.conf.schema.json",
+  "productName": "TruthTeller AI",
+  "version": "0.1.0",
+  "identifier": "dev.t2ai.app",
+  "build": {
+    "beforeDevCommand": "npm run dev",
+    "beforeBuildCommand": "npm run build",
+    "devUrl": "http://localhost:3000",
+    "frontendDist": "../frontend/out"
+  },
+  "app": {
+    "windows": [
+      {
+        "title": "TruthTeller AI",
+        "width": 1200,
+        "height": 800,
+        "minWidth": 800,
+        "minHeight": 600
+      }
+    ],
+    "security": {
+      "csp": null
+    }
+  },
+  "bundle": {
+    "active": true,
+    "targets": ["dmg", "app"],
+    "icon": [
+      "icons/32x32.png",
+      "icons/128x128.png",
+      "icons/128x128@2x.png"
+    ],
+    "category": "Productivity",
+    "shortDescription": "Multi-LLM deliberation council with peer review",
+    "longDescription": "TruthTeller AI is a 3-stage deliberation system where multiple LLMs collaboratively answer questions through independent responses, anonymized peer review, and chairman synthesis.",
+    "macOS": {
+      "minimumSystemVersion": "10.15"
+    }
+  }
+}
