@@ -1,0 +1,47 @@
+TruthTeller AI Proprietary License
+All Rights Reserved
+
+Copyright (c) 2026 TruthTeller AI contributors.
+
+This repository and all associated source code, assets, documentation, and binaries
+provided by the TruthTeller AI contributors (the "Software") are proprietary.
+
+1. No Permission Grant
+No license or other permission is granted to any person to use, copy, modify,
+merge, publish, distribute, sublicense, sell, host, provide as a service, or
+otherwise exploit the Software, in whole or in part, except with prior written
+permission from the copyright holder.
+
+2. No Rebranding
+You may not rebrand, relabel, remove attribution, remove product identity,
+or represent this Software (or any modified version) as a different product
+without prior written permission from the copyright holder.
+
+3. No Redistribution
+Redistribution of source code, binaries, container images, installers, or any
+substantial portions of the Software is prohibited without prior written
+permission from the copyright holder.
+
+4. Third-Party and Upstream Components
+This license applies only to rights held by the TruthTeller AI contributors.
+Third-party and upstream components included in, linked from, or otherwise used
+by this repository may be subject to separate license terms from their
+respective copyright holders. Nothing in this license limits rights granted by
+those separate licenses.
+
+5. Trademark and Branding
+"TruthTeller AI", "T2AI", associated names, logos, and branding elements are
+reserved. No trademark rights are granted by this license.
+
+6. Warranty Disclaimer
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE, AND NON-INFRINGEMENT.
+
+7. Liability Limitation
+IN NO EVENT SHALL THE COPYRIGHT HOLDERS OR CONTRIBUTORS BE LIABLE FOR ANY CLAIM,
+DAMAGES, OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT, OR
+OTHERWISE, ARISING FROM, OUT OF, OR IN CONNECTION WITH THE SOFTWARE OR THE USE
+OR OTHER DEALINGS IN THE SOFTWARE.
+
+For permission requests, contact: <iobender@outlook.com>

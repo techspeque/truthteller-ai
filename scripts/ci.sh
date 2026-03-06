@@ -73,6 +73,9 @@ cargo build --workspace
 echo "=== Frontend: lint ==="
 (cd frontend && npm run lint)
 
+echo "=== Frontend: typecheck ==="
+(cd frontend && npm run typecheck)
+
 echo "=== Frontend: build ==="
 (cd frontend && npm run build)
 

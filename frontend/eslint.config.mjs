@@ -15,13 +15,13 @@ const eslintConfig = [
     rules: {
       // Relax rules that conflict with the existing codebase style
       "react/no-unescaped-entities": "off",
-      // All logging should go through lib/logger.js
+      // All logging should go through lib/logger.ts
       "no-console": "warn",
     },
   },
   {
     // Allow console in the logger itself
-    files: ["src/lib/logger.js"],
+    files: ["src/lib/logger.ts"],
     rules: {
       "no-console": "off",
     },

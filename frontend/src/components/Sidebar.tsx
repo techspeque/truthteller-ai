@@ -1,4 +1,5 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, type MouseEvent } from 'react';
+import type { ConversationSummary } from '@/types/api';
 import './Sidebar.css';
 
 const IconSun = () => (
@@ -60,9 +61,20 @@ const IconCheck = () => (
   </svg>
 );
 
-function conversationInitial(title) {
+function conversationInitial(title: string | undefined): string {
   const t = (title || 'N').trim();
-  return t[0].toUpperCase();
+  return t[0]!.toUpperCase();
+}
+
+interface SidebarProps {
+  conversations: ConversationSummary[];
+  currentConversationId: string | null;
+  onSelectConversation: (id: string) => void;
+  onNewConversation: () => void;
+  onDeleteConversation: (id: string) => void;
+  onOpenSettings: () => void;
+  isDarkMode: boolean;
+  onToggleDarkMode: () => void;
 }
 
 export default function Sidebar({
@@ -74,14 +86,14 @@ export default function Sidebar({
   onOpenSettings,
   isDarkMode,
   onToggleDarkMode,
-}) {
+}: SidebarProps) {
   const [search, setSearch] = useState('');
   const [collapsed, setCollapsed] = useState(() => {
     if (typeof window === 'undefined') return false;
     return localStorage.getItem('sidebar-collapsed') === 'true';
   });
-  const [pendingDeleteId, setPendingDeleteId] = useState(null);
-  const pendingDeleteTimerRef = useRef(null);
+  const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
+  const pendingDeleteTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const clearPendingDeleteTimer = () => {
     if (pendingDeleteTimerRef.current) {
@@ -104,7 +116,7 @@ export default function Sidebar({
       )
     : conversations;
 
-  const startDelete = (e, id) => {
+  const startDelete = (e: MouseEvent, id: string) => {
     e.stopPropagation();
     setPendingDeleteId(id);
     clearPendingDeleteTimer();
@@ -114,20 +126,19 @@ export default function Sidebar({
     }, 3000);
   };
 
-  const cancelDelete = (e) => {
+  const cancelDelete = (e: MouseEvent) => {
     e.stopPropagation();
     clearPendingDeleteTimer();
     setPendingDeleteId(null);
   };
 
-  const confirmDelete = (e, id) => {
+  const confirmDelete = (e: MouseEvent, id: string) => {
     e.stopPropagation();
     clearPendingDeleteTimer();
     setPendingDeleteId(null);
     onDeleteConversation(id);
   };
 
-  // ---- Collapsed sidebar ----
   if (collapsed) {
     return (
       <div className="sidebar sidebar-collapsed">
@@ -165,7 +176,6 @@ export default function Sidebar({
     );
   }
 
-  // ---- Expanded sidebar ----
   return (
     <div className="sidebar">
       <div className="sidebar-header">

@@ -1,9 +1,14 @@
 import { useState } from 'react';
 import ReactMarkdown from 'react-markdown';
 import { log } from '@/lib/logger';
+import type { FinalResult } from '@/types/api';
 import './Stage3.css';
 
-export default function Stage3({ finalResponse }) {
+interface Stage3Props {
+  finalResponse: FinalResult;
+}
+
+export default function Stage3({ finalResponse }: Stage3Props) {
   const [copied, setCopied] = useState(false);
 
   if (!finalResponse) {
@@ -16,7 +21,7 @@ export default function Stage3({ finalResponse }) {
       setCopied(true);
       setTimeout(() => setCopied(false), 1500);
     } catch (e) {
-      log.warn('Clipboard copy failed', { error: e.message });
+      log.warn('Clipboard copy failed', { error: (e as Error).message });
     }
   };
 

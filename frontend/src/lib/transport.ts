@@ -1,23 +1,33 @@
-/**
- * Dual transport abstraction for TruthTeller AI.
- * Auto-detects Tauri vs web runtime and exports the appropriate API client.
- */
-
 import { log } from '@/lib/logger';
+import type {
+  Conversation,
+  ConversationSummary,
+  AppConfigResponse,
+  StorageInfo,
+  AppConfig,
+  AvailableModel,
+  RerunResponse,
+} from '@/types/api';
+import type { CouncilStreamEvent, CouncilEventType } from '@/types/events';
 
 const API_BASE = 'http://localhost:8001';
 
-/**
- * Detect whether we're running inside Tauri or a regular browser.
- */
-function detectRuntime() {
+type Runtime = 'tauri' | 'web';
+
+declare global {
+  interface Window {
+    __TAURI_INTERNALS__?: unknown;
+  }
+}
+
+function detectRuntime(): Runtime {
   if (typeof window !== 'undefined' && window.__TAURI_INTERNALS__) {
     return 'tauri';
   }
   return 'web';
 }
 
-function buildMessageRequestOptions(content, files = []) {
+function buildMessageRequestOptions(content: string, files: File[] = []): RequestInit {
   if (files && files.length > 0) {
     const formData = new FormData();
     formData.append('content', content);
@@ -36,7 +46,7 @@ function buildMessageRequestOptions(content, files = []) {
   };
 }
 
-async function throwDetailedError(response, fallback) {
+async function throwDetailedError(response: Response, fallback: string): Promise<never> {
   let detail = '';
   try {
     const json = await response.json();
@@ -51,10 +61,29 @@ async function throwDetailedError(response, fallback) {
   throw new Error(detail || fallback);
 }
 
-/**
- * HTTP transport — used in web mode, talks to the axum/FastAPI backend.
- */
-const httpTransport = {
+export type StreamEventCallback = (eventType: CouncilEventType, event: CouncilStreamEvent) => void;
+
+export interface Transport {
+  healthCheck(): Promise<unknown>;
+  listConversations(): Promise<ConversationSummary[]>;
+  createConversation(): Promise<Conversation>;
+  getConversation(conversationId: string): Promise<Conversation>;
+  deleteConversation(conversationId: string): Promise<unknown>;
+  sendMessage(conversationId: string, content: string, files?: File[]): Promise<unknown>;
+  sendMessageStream(conversationId: string, content: string, files: File[], onEvent: StreamEventCallback): Promise<void>;
+  getConfig(): Promise<AppConfigResponse>;
+  getStorageInfo(): Promise<StorageInfo>;
+  updateConfig(config: Partial<AppConfig>): Promise<AppConfigResponse>;
+  setOpenRouterApiKey(apiKey: string): Promise<AppConfigResponse>;
+  clearOpenRouterApiKey(): Promise<AppConfigResponse>;
+  testOpenRouterApiKey(apiKey?: string): Promise<unknown>;
+  getAvailableModels(): Promise<AvailableModel[]>;
+  retryModels(conversationId: string, models: string[], userQuery: string): Promise<unknown>;
+  rerunAssistant(conversationId: string, payload: unknown): Promise<RerunResponse>;
+  openLogsFolder(): Promise<unknown>;
+}
+
+const httpTransport: Transport = {
   async healthCheck() {
     const response = await fetch(`${API_BASE}/`);
     if (!response.ok) throw new Error('Backend unavailable');
@@ -77,13 +106,13 @@ const httpTransport = {
     return response.json();
   },
 
-  async getConversation(conversationId) {
+  async getConversation(conversationId: string) {
     const response = await fetch(`${API_BASE}/api/conversations/${conversationId}`);
     if (!response.ok) throw new Error('Failed to get conversation');
     return response.json();
   },
 
-  async deleteConversation(conversationId) {
+  async deleteConversation(conversationId: string) {
     const response = await fetch(`${API_BASE}/api/conversations/${conversationId}`, {
       method: 'DELETE',
     });
@@ -91,7 +120,7 @@ const httpTransport = {
     return response.json();
   },
 
-  async sendMessage(conversationId, content, files = []) {
+  async sendMessage(conversationId: string, content: string, files: File[] = []) {
     const hasFiles = files && files.length > 0;
     const url = hasFiles
       ? `${API_BASE}/api/conversations/${conversationId}/message/upload`
@@ -101,14 +130,14 @@ const httpTransport = {
     return response.json();
   },
 
-  async sendMessageStream(conversationId, content, files = [], onEvent) {
+  async sendMessageStream(conversationId: string, content: string, files: File[] = [], onEvent: StreamEventCallback) {
     const response = await fetch(
       `${API_BASE}/api/conversations/${conversationId}/message/stream`,
       buildMessageRequestOptions(content, files)
     );
     if (!response.ok) throw new Error('Failed to send message');
 
-    const reader = response.body.getReader();
+    const reader = response.body!.getReader();
     const decoder = new TextDecoder();
 
     while (true) {
@@ -122,10 +151,10 @@ const httpTransport = {
         if (line.startsWith('data: ')) {
           const data = line.slice(6);
           try {
-            const event = JSON.parse(data);
+            const event = JSON.parse(data) as CouncilStreamEvent;
             onEvent(event.type, event);
           } catch (e) {
-            log.warn('Failed to parse SSE event', { error: e.message, data });
+            log.warn('Failed to parse SSE event', { error: (e as Error).message, data });
           }
         }
       }
@@ -144,7 +173,7 @@ const httpTransport = {
     return response.json();
   },
 
-  async updateConfig(config) {
+  async updateConfig(config: Partial<AppConfig>) {
     const response = await fetch(`${API_BASE}/api/config`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
@@ -154,7 +183,7 @@ const httpTransport = {
     return response.json();
   },
 
-  async setOpenRouterApiKey(apiKey) {
+  async setOpenRouterApiKey(apiKey: string) {
     const response = await fetch(`${API_BASE}/api/config/credentials/openrouter`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -172,7 +201,7 @@ const httpTransport = {
     return response.json();
   },
 
-  async testOpenRouterApiKey(apiKey = '') {
+  async testOpenRouterApiKey(apiKey: string = '') {
     const response = await fetch(`${API_BASE}/api/config/credentials/openrouter/test`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -188,7 +217,7 @@ const httpTransport = {
     return response.json();
   },
 
-  async retryModels(conversationId, models, userQuery) {
+  async retryModels(conversationId: string, models: string[], userQuery: string) {
     const response = await fetch(
       `${API_BASE}/api/conversations/${conversationId}/retry`,
       {
@@ -201,7 +230,7 @@ const httpTransport = {
     return response.json();
   },
 
-  async rerunAssistant(conversationId, payload) {
+  async rerunAssistant(conversationId: string, payload: unknown) {
     const response = await fetch(
       `${API_BASE}/api/conversations/${conversationId}/rerun`,
       {
@@ -222,29 +251,43 @@ const httpTransport = {
   },
 };
 
-/**
- * Tauri transport — calls Rust commands via IPC.
- * Uses @tauri-apps/api invoke() for CRUD and listen() for streaming events.
- */
-function createTauriTransport() {
-  // Lazy-load Tauri APIs so the module doesn't break in non-Tauri contexts.
-  let _invoke = null;
-  let _listen = null;
+interface TauriFileData {
+  filename: string;
+  content_type: string | null;
+  data: number[];
+}
 
-  async function getInvoke() {
+function createTauriTransport(): Transport {
+  type InvokeFn = <T>(cmd: string, args?: Record<string, unknown>) => Promise<T>;
+  type ListenFn = <T>(event: string, handler: (event: { payload: T }) => void) => Promise<() => void>;
+
+  let _invoke: InvokeFn | null = null;
+  let _listen: ListenFn | null = null;
+
+  async function getInvoke(): Promise<InvokeFn> {
     if (!_invoke) {
       const mod = await import('@tauri-apps/api/core');
-      _invoke = mod.invoke;
+      _invoke = mod.invoke as InvokeFn;
     }
     return _invoke;
   }
 
-  async function getListen() {
+  async function getListen(): Promise<ListenFn> {
     if (!_listen) {
       const mod = await import('@tauri-apps/api/event');
-      _listen = mod.listen;
+      _listen = mod.listen as ListenFn;
     }
     return _listen;
+  }
+
+  async function readFilesForTauri(files: File[]): Promise<TauriFileData[]> {
+    return Promise.all(
+      (files || []).map(async (file) => ({
+        filename: file.name,
+        content_type: file.type || null,
+        data: Array.from(new Uint8Array(await file.arrayBuffer())),
+      }))
+    );
   }
 
   return {
@@ -263,17 +306,17 @@ function createTauriTransport() {
       return invoke('create_conversation');
     },
 
-    async getConversation(conversationId) {
+    async getConversation(conversationId: string) {
       const invoke = await getInvoke();
       return invoke('get_conversation', { conversationId });
     },
 
-    async deleteConversation(conversationId) {
+    async deleteConversation(conversationId: string) {
       const invoke = await getInvoke();
       try {
         return await invoke('delete_conversation', { conversationId });
-      } catch (error) {
-        const message = String(error?.message || error || '');
+      } catch (error: unknown) {
+        const message = String((error as Error)?.message || error || '');
         const looksLikeArgMismatch = (
           message.includes('conversation_id')
           || message.includes('missing required key')
@@ -284,41 +327,24 @@ function createTauriTransport() {
       }
     },
 
-    async sendMessage(conversationId, content, files = []) {
+    async sendMessage(conversationId: string, content: string, files: File[] = []) {
       const invoke = await getInvoke();
-      // For file uploads in Tauri, read files as ArrayBuffers and pass as binary
-      const fileData = await Promise.all(
-        (files || []).map(async (file) => ({
-          filename: file.name,
-          content_type: file.type || null,
-          data: Array.from(new Uint8Array(await file.arrayBuffer())),
-        }))
-      );
+      const fileData = await readFilesForTauri(files);
       return invoke('send_message', { conversationId, content, files: fileData });
     },
 
-    async sendMessageStream(conversationId, content, files = [], onEvent) {
+    async sendMessageStream(conversationId: string, content: string, files: File[] = [], onEvent: StreamEventCallback) {
       const invoke = await getInvoke();
       const listen = await getListen();
 
-      // Read files before starting the stream
-      const fileData = await Promise.all(
-        (files || []).map(async (file) => ({
-          filename: file.name,
-          content_type: file.type || null,
-          data: Array.from(new Uint8Array(await file.arrayBuffer())),
-        }))
-      );
+      const fileData = await readFilesForTauri(files);
 
-      // Listen for streaming events from Rust
-      const unlisten = await listen('t2ai-event', (tauriEvent) => {
+      const unlisten = await listen<CouncilStreamEvent>('t2ai-event', (tauriEvent) => {
         const event = tauriEvent.payload;
         onEvent(event.type, event);
       });
 
       try {
-        // This invoke completes when the full council process is done.
-        // Events are emitted along the way via the 't2ai-event' channel.
         await invoke('send_message_stream', {
           conversationId,
           content,
@@ -339,12 +365,12 @@ function createTauriTransport() {
       return invoke('get_storage_info');
     },
 
-    async updateConfig(config) {
+    async updateConfig(config: Partial<AppConfig>) {
       const invoke = await getInvoke();
       return invoke('update_config', { config });
     },
 
-    async setOpenRouterApiKey(apiKey) {
+    async setOpenRouterApiKey(apiKey: string) {
       const invoke = await getInvoke();
       return invoke('set_openrouter_api_key', { apiKey });
     },
@@ -354,7 +380,7 @@ function createTauriTransport() {
       return invoke('clear_openrouter_api_key');
     },
 
-    async testOpenRouterApiKey(apiKey = '') {
+    async testOpenRouterApiKey(apiKey: string = '') {
       const invoke = await getInvoke();
       return invoke('test_openrouter_api_key', { apiKey });
     },
@@ -369,20 +395,17 @@ function createTauriTransport() {
       return invoke('get_available_models');
     },
 
-    async retryModels(conversationId, models, userQuery) {
+    async retryModels(conversationId: string, models: string[], userQuery: string) {
       const invoke = await getInvoke();
       return invoke('retry_models', { conversationId, models, userQuery });
     },
 
-    async rerunAssistant(conversationId, payload) {
+    async rerunAssistant(conversationId: string, payload: unknown) {
       const invoke = await getInvoke();
       return invoke('rerun_assistant', { conversationId, payload });
     },
   };
 }
 
-/**
- * Auto-selected API client based on detected runtime.
- */
-export const runtime = detectRuntime();
-export const api = runtime === 'tauri' ? createTauriTransport() : httpTransport;
+export const runtime: Runtime = detectRuntime();
+export const api: Transport = runtime === 'tauri' ? createTauriTransport() : httpTransport;

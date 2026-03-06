@@ -9,16 +9,17 @@ import {
   formatNumber,
   modelLabel,
 } from '@/utils/insights';
+import type { AssistantMessage, UserMessage } from '@/types/api';
 import './CouncilInsights.css';
 
-const EMPTY_ARRAY = [];
-const EMPTY_OBJECT = {};
+const EMPTY_ARRAY: never[] = [];
+const EMPTY_OBJECT: Partial<import('@/types/api').CouncilMetadata> = {};
 
-function clamp(value, min, max) {
+function clamp(value: number, min: number, max: number) {
   return Math.min(max, Math.max(min, value));
 }
 
-function heatColor(rank, total) {
+function heatColor(rank: number, total: number) {
   const normalized = total <= 1 ? 0 : (rank - 1) / (total - 1);
   const hue = 120 - (normalized * 120);
   const saturation = 70;
@@ -26,10 +27,18 @@ function heatColor(rank, total) {
   return `hsl(${hue}, ${saturation}%, ${lightness}%)`;
 }
 
-function graphModelLabel(model, maxLength = 22) {
+function graphModelLabel(model: string, maxLength = 22) {
   const label = modelLabel(model);
   if (label.length <= maxLength) return label;
   return `${label.slice(0, maxLength - 3)}...`;
+}
+
+interface CouncilInsightsProps {
+  assistantMessage: AssistantMessage;
+  userMessage: UserMessage | null;
+  assistantIndex: number;
+  onRerunAssistant: (assistantIndex: number, options: { stage: string; includeModels: string[]; chairmanModel: string }) => void;
+  isBusy: boolean;
 }
 
 export default function CouncilInsights({
@@ -38,7 +47,7 @@ export default function CouncilInsights({
   assistantIndex,
   onRerunAssistant,
   isBusy,
-}) {
+}: CouncilInsightsProps) {
   const stage1 = assistantMessage?.stage1 || EMPTY_ARRAY;
   const stage2 = assistantMessage?.stage2 || EMPTY_ARRAY;
   const stage3 = assistantMessage?.stage3 || null;
@@ -85,14 +94,14 @@ export default function CouncilInsights({
     [stage1, stage2, stage3, metadata]
   );
 
-  const toggleModelSelection = (model) => {
+  const toggleModelSelection = (model: string) => {
     setSelectedModels((prev) => {
       if (prev.includes(model)) return prev.filter((entry) => entry !== model);
       return [...prev, model];
     });
   };
 
-  const runRerun = async (stage) => {
+  const runRerun = async (stage: string) => {
     await onRerunAssistant(assistantIndex, {
       stage,
       includeModels: effectiveSelectedModels,
@@ -120,10 +129,10 @@ export default function CouncilInsights({
   const stage2LabelX = stage2NodeX + 18;
   const stage3LabelX = stage3NodeX + 18;
 
-  const stage1Positions = Object.fromEntries(
+  const stage1Positions: Record<string, number> = Object.fromEntries(
     influenceData.stage1Models.map((model, index) => [model, 52 + (index * 64)])
   );
-  const stage2Positions = Object.fromEntries(
+  const stage2Positions: Record<string, number> = Object.fromEntries(
     influenceData.evaluators.map((model, index) => [model, 52 + (index * 64)])
   );
   const finalY = Math.round(graphHeight / 2);
@@ -412,7 +421,7 @@ export default function CouncilInsights({
             </tbody>
             <tfoot>
               <tr>
-                <td colSpan="2">Total</td>
+                <td colSpan={2}>Total</td>
                 <td>{formatNumber(costLatency.totals.prompt_tokens)}</td>
                 <td>{formatNumber(costLatency.totals.completion_tokens)}</td>
                 <td>{formatNumber(costLatency.totals.total_tokens)}</td>

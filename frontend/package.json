@@ -1,12 +1,13 @@
 {
   "name": "t2ai-frontend",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "private": true,
   "scripts": {
     "dev": "next dev --port 3000",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint src/"
+    "lint": "eslint src/",
+    "typecheck": "tsc --noEmit"
   },
   "dependencies": {
     "@tauri-apps/api": "^2.0.0",
@@ -18,8 +19,11 @@
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3.3.4",
+    "@types/node": "^25.3.5",
     "@types/react": "^19.0.0",
+    "@types/react-dom": "^19.2.3",
     "eslint": "^9.0.0",
-    "eslint-config-next": "^15.2.0"
+    "eslint-config-next": "^15.2.0",
+    "typescript": "^5.9.3"
   }
 }

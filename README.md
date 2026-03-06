@@ -276,6 +276,14 @@ Structured logging is enabled via `tracing`.
 - Native Tauri mode logs to both stdout/stderr and daily-rotated files in:
   `~/Library/Application Support/dev.t2ai.app/logs/t2ai.log.YYYY-MM-DD`
 
-## Disclaimer
+## Attribution
 
-This is a local-first experimental project, not production-hardened. Expect to tune models, prompts, and limits for your own usage.
+TruthTeller AI was originally forked from [karpathy/llm-council](https://github.com/karpathy/llm-council) and has since been significantly modified and rebranded.
+
+Portions of this codebase are derived from the upstream project and remain subject to the upstream project's license and attribution requirements.
+
+## License
+
+This repository is distributed under the proprietary [TruthTeller AI License](LICENSE) (all rights reserved), which does not permit rebranding or redistribution without prior written permission.
+
+Third-party and upstream components may have separate license terms that continue to apply to those components.

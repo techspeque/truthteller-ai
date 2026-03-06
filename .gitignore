@@ -13,6 +13,17 @@ node_modules/
 # Next.js
 .next/
 out/
+*.tsbuildinfo
+
+# Cache artifacts
+.cache/
+.eslintcache
+.parcel-cache/
+.sass-cache/
+.turbo/
+__pycache__/
+.pytest_cache/
+.mypy_cache/
 
 # OS files
 .DS_Store

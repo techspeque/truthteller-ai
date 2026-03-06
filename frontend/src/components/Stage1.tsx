@@ -1,9 +1,16 @@
 import { useState } from 'react';
 import ReactMarkdown from 'react-markdown';
 import { log } from '@/lib/logger';
+import type { StageResult } from '@/types/api';
 import './Stage1.css';
 
-export default function Stage1({ responses, failedModels, failedModelErrors }) {
+interface Stage1Props {
+  responses: StageResult[];
+  failedModels?: string[];
+  failedModelErrors?: Record<string, string>;
+}
+
+export default function Stage1({ responses, failedModels, failedModelErrors }: Stage1Props) {
   const [activeTab, setActiveTab] = useState(0);
   const [copied, setCopied] = useState(false);
 
@@ -12,15 +19,14 @@ export default function Stage1({ responses, failedModels, failedModelErrors }) {
   const handleCopy = async () => {
     if (!hasResponses) return;
     try {
-      await navigator.clipboard.writeText(responses[activeTab].response);
+      await navigator.clipboard.writeText(responses[activeTab]!.response);
       setCopied(true);
       setTimeout(() => setCopied(false), 1500);
     } catch (e) {
-      log.warn('Clipboard copy failed', { error: e.message });
+      log.warn('Clipboard copy failed', { error: (e as Error).message });
     }
   };
 
-  // Determine failed models that aren't in the successful responses
   const successfulModels = new Set((responses || []).map((r) => r.model));
   const failed = (failedModels || []).filter((m) => !successfulModels.has(m));
   const errorMap = failedModelErrors || {};
@@ -67,10 +73,10 @@ export default function Stage1({ responses, failedModels, failedModelErrors }) {
         <div className="tab-content">
           <div className="tab-content-header">
             <div className="model-name">
-              {responses[activeTab].model}
-              {responses[activeTab].usage && (
+              {responses[activeTab]!.model}
+              {responses[activeTab]!.usage && (
                 <span className="token-badge">
-                  {responses[activeTab].usage.total_tokens} tokens
+                  {responses[activeTab]!.usage!.total_tokens} tokens
                 </span>
               )}
             </div>
@@ -79,7 +85,7 @@ export default function Stage1({ responses, failedModels, failedModelErrors }) {
             </button>
           </div>
           <div className="response-text markdown-content">
-            <ReactMarkdown>{responses[activeTab].response}</ReactMarkdown>
+            <ReactMarkdown>{responses[activeTab]!.response}</ReactMarkdown>
           </div>
         </div>
       )}

@@ -1,19 +1,24 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, type SVGProps } from 'react';
 import { api, runtime } from '@/lib/transport';
+import type {
+  AppConfig,
+  AppConfigResponse,
+  CredentialsStatus,
+  AvailableModel,
+  StorageInfo,
+} from '@/types/api';
 import './Settings.css';
 
 /* ---- Inline SVG icons (14x14, stroke-based) ---- */
-const s = { width: 14, height: 14, viewBox: '0 0 16 16', fill: 'none', stroke: 'currentColor', strokeWidth: '1.5', strokeLinecap: 'round', strokeLinejoin: 'round' };
-const Icon = ({ d, ...rest }) => <svg {...s} {...rest}><path d={d} /></svg>;
+const s: SVGProps<SVGSVGElement> = { width: 14, height: 14, viewBox: '0 0 16 16', fill: 'none', stroke: 'currentColor', strokeWidth: '1.5', strokeLinecap: 'round' as const, strokeLinejoin: 'round' as const };
+const Icon = ({ d, ...rest }: { d: string } & SVGProps<SVGSVGElement>) => <svg {...s} {...rest}><path d={d} /></svg>;
 
-// Tab icons
 const IconGeneral  = () => <Icon d="M8 1a7 7 0 100 14A7 7 0 008 1zm0 4.5v3m0 2.5h.01" />;
 const IconModels   = () => <Icon d="M2 4l6-3 6 3v8l-6 3-6-3V4zm6-3v14m6-11l-6 3-6-3" />;
 const IconKey      = () => <Icon d="M10.5 2a3.5 3.5 0 00-3.23 4.84L2 12.1V14h2v-1.5h1.5V11H7l1.16-1.27A3.5 3.5 0 1010.5 2zm1 3a1 1 0 100-2 1 1 0 000 2z" />;
 const IconAdvanced = () => <Icon d="M6.5 1.5L5.7 3.2 3.8 2.7l-.5 1.9 1.7.8-.3 1.9h2l-.3-1.9 1.7-.8-.5-1.9-1.9.5zm5 5L10.7 8.2l-1.9-.5-.5 1.9 1.7.8-.3 1.9h2l-.3-1.9 1.7-.8-.5-1.9-1.9.5z" />;
 const IconInfo     = () => <Icon d="M8 1.5a6.5 6.5 0 110 13 6.5 6.5 0 010-13zm0 4v5m0-7.2h.01" />;
 
-// Action icons
 const IconSave     = () => <Icon d="M3 1h8l4 4v8a2 2 0 01-2 2H3a2 2 0 01-2-2V3a2 2 0 012-2zm5 10a2 2 0 100-4 2 2 0 000 4zM4 1v4h6V1" />;
 const IconTest     = () => <Icon d="M13 3l-7.5 7.5L2 7" />;
 const IconTrash    = () => <Icon d="M2 4h12M5.333 4V2.667a1.333 1.333 0 011.334-1.334h2.666a1.333 1.333 0 011.334 1.334V4m2 0v9.333a1.333 1.333 0 01-1.334 1.334H4.667a1.333 1.333 0 01-1.334-1.334V4" />;
@@ -26,10 +31,11 @@ const IconCheck    = () => <Icon d="M13 3l-7.5 7.5L2 7" />;
 const IconCopy     = () => <Icon d="M6 2h7a1 1 0 011 1v9a1 1 0 01-1 1H6a1 1 0 01-1-1V3a1 1 0 011-1zM3 5H2v9a1 1 0 001 1h7v-1" />;
 const IconRefresh  = () => <Icon d="M1.5 8a6.5 6.5 0 0111.1-4.6L14 5M14.5 8a6.5 6.5 0 01-11.1 4.6L2 11" />;
 
-const TAB_ICONS = { general: IconGeneral, models: IconModels, credentials: IconKey, advanced: IconAdvanced, info: IconInfo };
-const TABS = ['general', 'models', 'credentials', 'advanced', 'info'];
+type TabName = 'general' | 'models' | 'credentials' | 'advanced' | 'info';
+const TAB_ICONS: Record<TabName, () => React.JSX.Element> = { general: IconGeneral, models: IconModels, credentials: IconKey, advanced: IconAdvanced, info: IconInfo };
+const TABS: TabName[] = ['general', 'models', 'credentials', 'advanced', 'info'];
 
-const STORAGE_FIELDS = [
+const STORAGE_FIELDS: { key: keyof StorageInfo; label: string }[] = [
   { key: 'data_dir', label: 'Data Directory' },
   { key: 'conversations_dir', label: 'Conversations' },
   { key: 'uploads_dir', label: 'Uploads' },
@@ -38,7 +44,21 @@ const STORAGE_FIELDS = [
   { key: 'logs_dir', label: 'Logs Directory' },
 ];
 
-function withDefaults(config = {}) {
+interface EditableConfig {
+  council_models: string[];
+  chairman_model: string;
+  request_timeout_seconds: number;
+  max_parallel_requests: number;
+  retry_attempts: number;
+  retry_backoff_ms: number;
+  stage2_enabled: boolean;
+  stage3_model_override: string;
+  theme: string;
+  default_export_format: string;
+  insights_expanded_default: boolean;
+}
+
+function withDefaults(config: Partial<EditableConfig> = {}): EditableConfig {
   return {
     council_models: Array.isArray(config.council_models) ? config.council_models : [],
     chairman_model: config.chairman_model || '',
@@ -56,13 +76,13 @@ function withDefaults(config = {}) {
 
 const DEFAULT_CONFIG = withDefaults();
 
-const DEFAULT_CREDENTIALS = {
+const DEFAULT_CREDENTIALS: CredentialsStatus = {
   openrouter_configured: false,
   source: 'missing',
   masked_hint: null,
 };
 
-function toUpdatePayload(config) {
+function toUpdatePayload(config: EditableConfig): Partial<AppConfig> {
   return {
     council_models: config.council_models,
     chairman_model: config.chairman_model,
@@ -78,7 +98,7 @@ function toUpdatePayload(config) {
   };
 }
 
-function pickDefaults(tab) {
+function pickDefaults(tab: TabName): Partial<EditableConfig> {
   if (tab === 'general') {
     return {
       theme: DEFAULT_CONFIG.theme,
@@ -105,10 +125,10 @@ function pickDefaults(tab) {
   return {};
 }
 
-function validateConfig(config) {
+function validateConfig(config: EditableConfig | null): string[] {
   if (!config) return [];
 
-  const issues = [];
+  const issues: string[] = [];
   if (config.council_models.length < 1) {
     issues.push('At least one council model is required.');
   }
@@ -137,33 +157,38 @@ function validateConfig(config) {
   return issues;
 }
 
-function isApiKeyPlausible(apiKey) {
+function isApiKeyPlausible(apiKey: string): boolean {
   const key = apiKey.trim();
   return key.startsWith('sk-or-') && key.length >= 16;
 }
 
-export default function Settings({ onClose, onSaved }) {
-  const [activeTab, setActiveTab] = useState('models');
-  const [config, setConfig] = useState(null);
-  const [savedConfig, setSavedConfig] = useState(null);
-  const [availableModels, setAvailableModels] = useState([]);
+interface SettingsProps {
+  onClose: () => void;
+  onSaved: (config: AppConfigResponse) => void;
+}
+
+export default function Settings({ onClose, onSaved }: SettingsProps) {
+  const [activeTab, setActiveTab] = useState<TabName>('models');
+  const [config, setConfig] = useState<EditableConfig | null>(null);
+  const [savedConfig, setSavedConfig] = useState<EditableConfig | null>(null);
+  const [availableModels, setAvailableModels] = useState<AvailableModel[]>([]);
   const [newModel, setNewModel] = useState('');
   const [saving, setSaving] = useState(false);
   const [loadingModels, setLoadingModels] = useState(false);
-  const [error, setError] = useState(null);
-  const [modelsError, setModelsError] = useState(null);
+  const [error, setError] = useState<string | null>(null);
+  const [modelsError, setModelsError] = useState<string | null>(null);
 
-  const [credentials, setCredentials] = useState(DEFAULT_CREDENTIALS);
+  const [credentials, setCredentials] = useState<CredentialsStatus>(DEFAULT_CREDENTIALS);
   const [apiKeyInput, setApiKeyInput] = useState('');
   const [credentialBusy, setCredentialBusy] = useState(false);
   const [openingLogs, setOpeningLogs] = useState(false);
-  const [credentialMessage, setCredentialMessage] = useState(null);
+  const [credentialMessage, setCredentialMessage] = useState<string | null>(null);
 
-  const [notice, setNotice] = useState(null);
-  const [storageInfo, setStorageInfo] = useState(null);
-  const [storageInfoError, setStorageInfoError] = useState(null);
+  const [notice, setNotice] = useState<string | null>(null);
+  const [storageInfo, setStorageInfo] = useState<StorageInfo | null>(null);
+  const [storageInfoError, setStorageInfoError] = useState<string | null>(null);
   const [loadingStorageInfo, setLoadingStorageInfo] = useState(false);
-  const [copiedStorageKey, setCopiedStorageKey] = useState(null);
+  const [copiedStorageKey, setCopiedStorageKey] = useState<string | null>(null);
 
   const isDirty = useMemo(() => {
     if (!config || !savedConfig) return false;
@@ -173,14 +198,14 @@ export default function Settings({ onClose, onSaved }) {
   const validationIssues = useMemo(() => validateConfig(config), [config]);
   const canResetTab = activeTab === 'general' || activeTab === 'models' || activeTab === 'advanced';
 
-  const applyConfigResponse = (response) => {
+  const applyConfigResponse = (response: AppConfigResponse) => {
     const normalized = withDefaults(response);
     setConfig(normalized);
     setSavedConfig(normalized);
     setCredentials(response.credentials || DEFAULT_CREDENTIALS);
   };
 
-  const applyCredentialStatus = (response) => {
+  const applyCredentialStatus = (response: AppConfigResponse) => {
     setCredentials(response.credentials || DEFAULT_CREDENTIALS);
   };
 
@@ -196,7 +221,7 @@ export default function Settings({ onClose, onSaved }) {
       const info = await api.getStorageInfo();
       setStorageInfo(info);
     } catch (err) {
-      setStorageInfoError(err.message || 'Failed to load storage info');
+      setStorageInfoError((err as Error).message || 'Failed to load storage info');
     } finally {
       setLoadingStorageInfo(false);
     }
@@ -219,12 +244,13 @@ export default function Settings({ onClose, onSaved }) {
         setStorageInfo(info);
         setStorageInfoError(null);
       })
-      .catch((err) => setStorageInfoError(err.message || 'Failed to load storage info'))
+      .catch((err: Error) => setStorageInfoError(err.message || 'Failed to load storage info'))
       .finally(() => setLoadingStorageInfo(false));
   }, []);
 
-  const handleRemoveModel = (model) => {
+  const handleRemoveModel = (model: string) => {
     setConfig((prev) => {
+      if (!prev) return prev;
       const updatedModels = prev.council_models.filter((m) => m !== model);
       const fallbackChairman = updatedModels[0] || '';
       return {
@@ -240,11 +266,14 @@ export default function Settings({ onClose, onSaved }) {
   const handleAddModel = () => {
     const model = newModel.trim();
     if (model && config && !config.council_models.includes(model)) {
-      setConfig((prev) => ({
-        ...prev,
-        council_models: [...prev.council_models, model],
-        chairman_model: prev.chairman_model || model,
-      }));
+      setConfig((prev) => {
+        if (!prev) return prev;
+        return {
+          ...prev,
+          council_models: [...prev.council_models, model],
+          chairman_model: prev.chairman_model || model,
+        };
+      });
       setNewModel('');
     }
   };
@@ -252,7 +281,7 @@ export default function Settings({ onClose, onSaved }) {
   const handleRestoreTabDefaults = () => {
     if (!config) return;
     const defaults = pickDefaults(activeTab);
-    setConfig((prev) => ({ ...prev, ...defaults }));
+    setConfig((prev) => prev ? { ...prev, ...defaults } : prev);
     setNotice(`Restored ${activeTab} defaults.`);
   };
 
@@ -264,7 +293,7 @@ export default function Settings({ onClose, onSaved }) {
   const handleSave = async () => {
     if (!config) return;
     if (validationIssues.length > 0) {
-      setError(validationIssues[0]);
+      setError(validationIssues[0]!);
       return;
     }
 
@@ -277,7 +306,7 @@ export default function Settings({ onClose, onSaved }) {
       onSaved?.(response);
       onClose();
     } catch (err) {
-      setError(err.message || 'Failed to save configuration');
+      setError((err as Error).message || 'Failed to save configuration');
     } finally {
       setSaving(false);
     }
@@ -309,7 +338,7 @@ export default function Settings({ onClose, onSaved }) {
       setApiKeyInput('');
       setCredentialMessage('OpenRouter API key saved.');
     } catch (err) {
-      setCredentialMessage(err.message || 'Failed to save API key.');
+      setCredentialMessage((err as Error).message || 'Failed to save API key.');
     } finally {
       setCredentialBusy(false);
     }
@@ -324,7 +353,7 @@ export default function Settings({ onClose, onSaved }) {
       setApiKeyInput('');
       setCredentialMessage('Stored API key cleared.');
     } catch (err) {
-      setCredentialMessage(err.message || 'Failed to clear API key.');
+      setCredentialMessage((err as Error).message || 'Failed to clear API key.');
     } finally {
       setCredentialBusy(false);
     }
@@ -346,7 +375,7 @@ export default function Settings({ onClose, onSaved }) {
         await reloadCredentialStatus();
       }
     } catch (err) {
-      setCredentialMessage(err.message || 'OpenRouter connection test failed.');
+      setCredentialMessage((err as Error).message || 'OpenRouter connection test failed.');
     } finally {
       setCredentialBusy(false);
     }
@@ -360,13 +389,13 @@ export default function Settings({ onClose, onSaved }) {
       await api.openLogsFolder();
       setNotice('Opened logs folder.');
     } catch (err) {
-      setStorageInfoError(err.message || 'Failed to open logs folder.');
+      setStorageInfoError((err as Error).message || 'Failed to open logs folder.');
     } finally {
       setOpeningLogs(false);
     }
   };
 
-  const handleCopyStoragePath = async (key, value) => {
+  const handleCopyStoragePath = async (key: string, value: unknown) => {
     const pathValue = typeof value === 'string' ? value.trim() : '';
     if (!pathValue) return;
     if (!navigator?.clipboard?.writeText) {
@@ -383,7 +412,6 @@ export default function Settings({ onClose, onSaved }) {
     }
   };
 
-  // ---- Loading state ----
   if (!config) {
     return (
       <div className="settings-overlay" onClick={onClose}>
@@ -400,7 +428,6 @@ export default function Settings({ onClose, onSaved }) {
     );
   }
 
-  // ---- Main render ----
   return (
     <div className="settings-overlay" onClick={onClose}>
       <div className="settings-panel" onClick={(e) => e.stopPropagation()}>
@@ -424,7 +451,7 @@ export default function Settings({ onClose, onSaved }) {
                 }}
               >
                 <TabIcon />
-                {tab[0].toUpperCase() + tab.slice(1)}
+                {tab[0]!.toUpperCase() + tab.slice(1)}
               </button>
             );
           })}
@@ -437,19 +464,18 @@ export default function Settings({ onClose, onSaved }) {
           )}
           {notice && <div className="settings-note">{notice}</div>}
 
-          {/* ---- General ---- */}
           {activeTab === 'general' && (
             <div className="settings-section">
               <h3>Appearance</h3>
               <div className="settings-field">
                 <span>Theme</span>
                 <div className="theme-toggle">
-                  {['system', 'light', 'dark'].map((value) => (
+                  {(['system', 'light', 'dark'] as const).map((value) => (
                     <button
                       key={value}
                       type="button"
                       className={`theme-toggle-btn ${config.theme === value ? 'active' : ''}`}
-                      onClick={() => setConfig((prev) => ({ ...prev, theme: value }))}
+                      onClick={() => setConfig((prev) => prev ? { ...prev, theme: value } : prev)}
                     >
                       {value === 'light' && (
                         <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
@@ -468,7 +494,7 @@ export default function Settings({ onClose, onSaved }) {
                           <path d="M5 14h6" />
                         </svg>
                       )}
-                      {value[0].toUpperCase() + value.slice(1)}
+                      {value[0]!.toUpperCase() + value.slice(1)}
                     </button>
                   ))}
                 </div>
@@ -478,7 +504,7 @@ export default function Settings({ onClose, onSaved }) {
                 <select
                   value={config.default_export_format}
                   onChange={(e) =>
-                    setConfig((prev) => ({ ...prev, default_export_format: e.target.value }))
+                    setConfig((prev) => prev ? { ...prev, default_export_format: e.target.value } : prev)
                   }
                 >
                   <option value="markdown">Markdown</option>
@@ -489,7 +515,7 @@ export default function Settings({ onClose, onSaved }) {
                   type="checkbox"
                   checked={config.insights_expanded_default}
                   onChange={(e) =>
-                    setConfig((prev) => ({ ...prev, insights_expanded_default: e.target.checked }))
+                    setConfig((prev) => prev ? { ...prev, insights_expanded_default: e.target.checked } : prev)
                   }
                 />
                 <span>Expand insights by default</span>
@@ -497,7 +523,6 @@ export default function Settings({ onClose, onSaved }) {
             </div>
           )}
 
-          {/* ---- Models ---- */}
           {activeTab === 'models' && (
             <div className="settings-section">
               <h3>Council Models</h3>
@@ -541,7 +566,7 @@ export default function Settings({ onClose, onSaved }) {
               <h3>Chairman Model</h3>
               <select
                 value={config.chairman_model}
-                onChange={(e) => setConfig((prev) => ({ ...prev, chairman_model: e.target.value }))}
+                onChange={(e) => setConfig((prev) => prev ? { ...prev, chairman_model: e.target.value } : prev)}
                 className="chairman-select"
               >
                 {config.council_models.map((model) => (
@@ -553,7 +578,6 @@ export default function Settings({ onClose, onSaved }) {
             </div>
           )}
 
-          {/* ---- Credentials ---- */}
           {activeTab === 'credentials' && (
             <div className="settings-section">
               <h3>OpenRouter Credentials</h3>
@@ -581,28 +605,13 @@ export default function Settings({ onClose, onSaved }) {
               </label>
 
               <div className="settings-actions-inline">
-                <button
-                  type="button"
-                  className="btn-inline primary"
-                  onClick={handleSetApiKey}
-                  disabled={credentialBusy}
-                >
+                <button type="button" className="btn-inline primary" onClick={handleSetApiKey} disabled={credentialBusy}>
                   <IconSave /> Save Key
                 </button>
-                <button
-                  type="button"
-                  className="btn-inline"
-                  onClick={handleTestApiKey}
-                  disabled={credentialBusy}
-                >
+                <button type="button" className="btn-inline" onClick={handleTestApiKey} disabled={credentialBusy}>
                   <IconTest /> Test Key
                 </button>
-                <button
-                  type="button"
-                  className="btn-inline danger"
-                  onClick={handleClearApiKey}
-                  disabled={credentialBusy}
-                >
+                <button type="button" className="btn-inline danger" onClick={handleClearApiKey} disabled={credentialBusy}>
                   <IconTrash /> Clear Key
                 </button>
               </div>
@@ -611,68 +620,39 @@ export default function Settings({ onClose, onSaved }) {
             </div>
           )}
 
-          {/* ---- Advanced ---- */}
           {activeTab === 'advanced' && (
             <div className="settings-section">
               <h3>Runtime</h3>
               <label className="settings-field">
                 <span>Request Timeout (seconds)</span>
                 <input
-                  type="number"
-                  min="10"
-                  max="300"
+                  type="number" min="10" max="300"
                   value={config.request_timeout_seconds}
-                  onChange={(e) =>
-                    setConfig((prev) => ({
-                      ...prev,
-                      request_timeout_seconds: Number(e.target.value),
-                    }))
-                  }
+                  onChange={(e) => setConfig((prev) => prev ? { ...prev, request_timeout_seconds: Number(e.target.value) } : prev)}
                 />
               </label>
               <label className="settings-field">
                 <span>Max Parallel Requests</span>
                 <input
-                  type="number"
-                  min="1"
-                  max="16"
+                  type="number" min="1" max="16"
                   value={config.max_parallel_requests}
-                  onChange={(e) =>
-                    setConfig((prev) => ({
-                      ...prev,
-                      max_parallel_requests: Number(e.target.value),
-                    }))
-                  }
+                  onChange={(e) => setConfig((prev) => prev ? { ...prev, max_parallel_requests: Number(e.target.value) } : prev)}
                 />
               </label>
               <label className="settings-field">
                 <span>Retry Attempts</span>
                 <input
-                  type="number"
-                  min="0"
-                  max="10"
+                  type="number" min="0" max="10"
                   value={config.retry_attempts}
-                  onChange={(e) =>
-                    setConfig((prev) => ({
-                      ...prev,
-                      retry_attempts: Number(e.target.value),
-                    }))
-                  }
+                  onChange={(e) => setConfig((prev) => prev ? { ...prev, retry_attempts: Number(e.target.value) } : prev)}
                 />
               </label>
               <label className="settings-field">
                 <span>Retry Backoff (ms)</span>
                 <input
-                  type="number"
-                  min="0"
-                  max="5000"
+                  type="number" min="0" max="5000"
                   value={config.retry_backoff_ms}
-                  onChange={(e) =>
-                    setConfig((prev) => ({
-                      ...prev,
-                      retry_backoff_ms: Number(e.target.value),
-                    }))
-                  }
+                  onChange={(e) => setConfig((prev) => prev ? { ...prev, retry_backoff_ms: Number(e.target.value) } : prev)}
                 />
               </label>
 
@@ -681,9 +661,7 @@ export default function Settings({ onClose, onSaved }) {
                 <input
                   type="checkbox"
                   checked={config.stage2_enabled}
-                  onChange={(e) =>
-                    setConfig((prev) => ({ ...prev, stage2_enabled: e.target.checked }))
-                  }
+                  onChange={(e) => setConfig((prev) => prev ? { ...prev, stage2_enabled: e.target.checked } : prev)}
                 />
                 <span>Enable Stage 2 ranking</span>
               </label>
@@ -693,25 +671,17 @@ export default function Settings({ onClose, onSaved }) {
                   type="text"
                   value={config.stage3_model_override}
                   placeholder="Leave blank to use chairman model"
-                  onChange={(e) =>
-                    setConfig((prev) => ({ ...prev, stage3_model_override: e.target.value }))
-                  }
+                  onChange={(e) => setConfig((prev) => prev ? { ...prev, stage3_model_override: e.target.value } : prev)}
                 />
               </label>
             </div>
           )}
 
-          {/* ---- Info ---- */}
           {activeTab === 'info' && (
             <div className="settings-section">
               <div className="settings-section-header-row">
                 <h3>Storage Artifacts</h3>
-                <button
-                  type="button"
-                  className="btn-inline"
-                  onClick={refreshStorageInfo}
-                  disabled={loadingStorageInfo}
-                >
+                <button type="button" className="btn-inline" onClick={refreshStorageInfo} disabled={loadingStorageInfo}>
                   <IconRefresh /> {loadingStorageInfo ? 'Refreshing...' : 'Refresh'}
                 </button>
               </div>
@@ -720,9 +690,7 @@ export default function Settings({ onClose, onSaved }) {
                 and local config/credentials files.
               </p>
 
-              {storageInfoError && (
-                <div className="settings-error">{storageInfoError}</div>
-              )}
+              {storageInfoError && <div className="settings-error">{storageInfoError}</div>}
 
               {!storageInfo && loadingStorageInfo && (
                 <p className="settings-info-loading">Loading storage paths...</p>
@@ -735,12 +703,7 @@ export default function Settings({ onClose, onSaved }) {
                   </div>
                   {runtime === 'tauri' && (
                     <div className="settings-actions-inline">
-                      <button
-                        type="button"
-                        className="btn-inline"
-                        onClick={handleOpenLogsFolder}
-                        disabled={openingLogs}
-                      >
+                      <button type="button" className="btn-inline" onClick={handleOpenLogsFolder} disabled={openingLogs}>
                         <IconFolder /> {openingLogs ? 'Opening logs...' : 'Open Logs Folder'}
                       </button>
                     </div>
@@ -776,15 +739,9 @@ export default function Settings({ onClose, onSaved }) {
           )}
         </div>
 
-        {/* ---- Footer ---- */}
         <div className="settings-footer">
           <div className="settings-footer-secondary">
-            <button
-              className="btn-ghost btn-icon"
-              onClick={handleRestoreTabDefaults}
-              title="Restore defaults for this tab"
-              disabled={!canResetTab}
-            >
+            <button className="btn-ghost btn-icon" onClick={handleRestoreTabDefaults} title="Restore defaults for this tab" disabled={!canResetTab}>
               <IconReset /> Reset Tab
             </button>
             <button className="btn-ghost btn-icon" onClick={handleRestoreAllDefaults} title="Restore all settings to defaults">
@@ -795,11 +752,7 @@ export default function Settings({ onClose, onSaved }) {
             <button className="btn-cancel btn-icon" onClick={handleCancel}>
               <IconX /> Cancel
             </button>
-            <button
-              className="btn-save btn-icon"
-              onClick={handleSave}
-              disabled={saving || !isDirty || validationIssues.length > 0}
-            >
+            <button className="btn-save btn-icon" onClick={handleSave} disabled={saving || !isDirty || validationIssues.length > 0}>
               <IconCheck /> {saving ? 'Saving...' : isDirty ? 'Save' : 'Saved'}
             </button>
           </div>
