@@ -24,6 +24,12 @@ The app supports multi-turn conversations, multi-file uploads, streaming updates
 - Export conversation to Markdown
 - Advanced insights: consensus matrix, influence graph, traceability, side-by-side diff, uncertainty panel, cost/latency breakdown, interactive rerun controls
 
+##  Roadmap
+
+- Add LiteLLM support
+- Support for Microsoft Windows installations
+- Enable overrides for local data stores
+
 ## Architecture
 
 ```bash
