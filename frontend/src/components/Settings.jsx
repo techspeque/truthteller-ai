@@ -798,7 +798,7 @@ export default function Settings({ onClose, onSaved }) {
               onClick={handleSave}
               disabled={saving || !isDirty || validationIssues.length > 0}
             >
-              <IconCheck /> {saving ? 'Saving...' : isDirty ? 'Save Changes' : 'Saved'}
+              <IconCheck /> {saving ? 'Saving...' : isDirty ? 'Save' : 'Saved'}
             </button>
           </div>
         </div>
