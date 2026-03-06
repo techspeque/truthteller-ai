@@ -2,13 +2,6 @@
 
 TruthTeller AI is a local app that runs a multi-model deliberation workflow through OpenRouter.
 
-Branding and package naming:
-- Project name: `TruthTeller AI`
-- Short name: `T2AI`
-- Repo/org slug: `truthteller-ai`
-- Rust crates/binaries: `t2ai-*` (`t2ai-core`, `t2ai-server`, `t2ai-tauri`)
-- Primary domain: `t2ai.dev` (with optional `truthteller.dev` redirect)
-
 Instead of asking one model, you ask a council of models:
 
 1. Stage 1: each model answers independently.
@@ -33,7 +26,7 @@ The app supports multi-turn conversations, multi-file uploads, streaming updates
 
 ## Architecture
 
-```
+```bash
 crates/core/       Shared Rust domain: types, config, storage, council, openrouter, attachments
 crates/server/     Web adapter: axum HTTP routes + SSE streaming
 backend/           Native adapter: Tauri commands + event streaming
@@ -238,50 +231,19 @@ Both web (SSE) and native (Tauri events) emit the same event types:
 
 `upload_processing_start`, `upload_processing_complete`, `stage1_start`, `stage1_complete`, `stage2_start`, `stage2_complete`, `stage3_start`, `stage3_complete`, `title_complete`, `complete`, `error`
 
-## Data Migration
-
-To import legacy web-mode data into a different directory (e.g. Tauri's app data):
-
-```bash
-cargo run -p t2ai-server -- --migrate /path/to/target
-```
-
-On macOS native app startup, T2AI also auto-migrates existing user data from:
-`~/Library/Application Support/com.llm.council`
-to:
-`~/Library/Application Support/dev.t2ai.app`
-when the new directory has no existing conversations/config/secrets yet.
-
-## Development
-
-```bash
-# Full CI (format, lint, test, build)
-./scripts/ci.sh
-
-# Rust checks only
-cargo fmt --all --check
-cargo clippy --workspace -- -D warnings
-cargo test --workspace --locked
-
-# Run ignored server integration test (requires local listener)
-cargo test -p t2ai-server -- --ignored
-
-# Frontend checks only
-cd frontend
-npm run lint
-npm run build
-```
-
 ## Versioning
 
 This repo uses a single app version across Rust crates, Tauri, and frontend package metadata.
 
 - Source of truth: `VERSION`
 - Check consistency:
+
   ```bash
   ./scripts/version.sh check
   ```
+
 - Bump all package versions in one command:
+
   ```bash
   ./scripts/version.sh set 0.2.0
   ```
