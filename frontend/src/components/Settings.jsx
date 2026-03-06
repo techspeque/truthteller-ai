@@ -354,12 +354,13 @@ export default function Settings({ onClose, onSaved }) {
 
   const handleOpenLogsFolder = async () => {
     setOpeningLogs(true);
-    setCredentialMessage(null);
+    setNotice(null);
+    setStorageInfoError(null);
     try {
       await api.openLogsFolder();
-      setCredentialMessage('Opened logs folder.');
+      setNotice('Opened logs folder.');
     } catch (err) {
-      setCredentialMessage(err.message || 'Failed to open logs folder.');
+      setStorageInfoError(err.message || 'Failed to open logs folder.');
     } finally {
       setOpeningLogs(false);
     }
@@ -732,6 +733,18 @@ export default function Settings({ onClose, onSaved }) {
                   <div className="storage-runtime-chip">
                     Runtime: {storageInfo.runtime || runtime}
                   </div>
+                  {runtime === 'tauri' && (
+                    <div className="settings-actions-inline">
+                      <button
+                        type="button"
+                        className="btn-inline"
+                        onClick={handleOpenLogsFolder}
+                        disabled={openingLogs}
+                      >
+                        <IconFolder /> {openingLogs ? 'Opening logs...' : 'Open Logs Folder'}
+                      </button>
+                    </div>
+                  )}
                   <div className="storage-info-list">
                     {STORAGE_FIELDS.map((field) => {
                       const value = storageInfo[field.key];
@@ -777,17 +790,6 @@ export default function Settings({ onClose, onSaved }) {
             <button className="btn-ghost btn-icon" onClick={handleRestoreAllDefaults} title="Restore all settings to defaults">
               <IconReset /> Reset All
             </button>
-            {runtime === 'tauri' && (
-              <button
-                className="btn-ghost btn-icon"
-                onClick={handleOpenLogsFolder}
-                disabled={openingLogs}
-                title="Open application logs folder"
-              >
-                <IconFolder />
-                {openingLogs ? 'Opening...' : 'Logs'}
-              </button>
-            )}
           </div>
           <div className="settings-footer-primary">
             <button className="btn-cancel btn-icon" onClick={handleCancel}>
