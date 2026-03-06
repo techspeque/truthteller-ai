@@ -141,6 +141,13 @@ if [[ "${CLEAN_BUILD}" -eq 1 ]]; then
   rm -rf frontend/.next frontend/out
 fi
 
+echo "=== Version consistency ==="
+if [[ -n "${GITHUB_REF_NAME:-}" ]]; then
+  "${SCRIPT_DIR}/version.sh" check --expect-tag "${GITHUB_REF_NAME}"
+else
+  "${SCRIPT_DIR}/version.sh" check
+fi
+
 if [[ "${RUN_CHECKS}" -eq 1 ]]; then
   echo "=== Rust format check ==="
   cargo fmt --all --check

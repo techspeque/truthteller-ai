@@ -272,6 +272,41 @@ npm run lint
 npm run build
 ```
 
+## Versioning
+
+This repo uses a single app version across Rust crates, Tauri, and frontend package metadata.
+
+- Source of truth: `VERSION`
+- Check consistency:
+  ```bash
+  ./scripts/version.sh check
+  ```
+- Bump all package versions in one command:
+  ```bash
+  ./scripts/version.sh set 0.2.0
+  ```
+
+`./scripts/ci.sh` and `./scripts/release.sh` both run version consistency checks automatically.
+
+## CI/CD
+
+GitHub Actions workflows are included in `.github/workflows/`:
+
+- `ci.yml` (push to `main` and pull requests)
+  - Reuses `./scripts/ci.sh`
+  - Runs prerequisites, version check, format/lint/tests/build
+- `release.yml` (tag push `vX.Y.Z`, plus manual dispatch)
+  - Reuses `./scripts/release.sh`
+  - Verifies tag version matches `VERSION`
+  - Builds macOS Tauri artifacts and publishes a GitHub Release on tag runs
+
+Release flow:
+
+1. Bump versions: `./scripts/version.sh set X.Y.Z`
+2. Commit and push
+3. Tag and push: `git tag vX.Y.Z && git push origin vX.Y.Z`
+4. `release.yml` builds artifacts and publishes the release
+
 Structured logging is enabled via `tracing`.
 
 - Set `RUST_LOG=debug` for verbose output.

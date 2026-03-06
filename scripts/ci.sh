@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Non-interactive CI script for TruthTeller AI.
-# Runs shared prerequisites, formatting checks, lints, tests, and frontend build.
+# Runs shared prerequisites, version checks, formatting checks, lints, tests, and frontend build.
 # Exit on first failure.
 set -euo pipefail
 
@@ -57,6 +57,9 @@ fi
 
 echo "=== Rust: format check ==="
 cargo fmt --all --check
+
+echo "=== Version consistency ==="
+"${SCRIPT_DIR}/version.sh" check
 
 echo "=== Rust: clippy (warnings = errors) ==="
 cargo clippy --workspace -- -D warnings
