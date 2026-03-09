@@ -1,6 +1,6 @@
 # TruthTeller AI
 
-[![CI](https://github.com/techspeque/truthteller-ai/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/techspeque/truthteller-ai/actions/workflows/ci.yml) [![Release](https://img.shields.io/github/v/release/techspeque/truthteller-ai?display_name=release)](https://github.com/techspeque/truthteller-ai/releases) [![Rust](https://img.shields.io/badge/Rust-1.93.0-DEA584?logo=rust)](https://www.rust-lang.org/) [![Next.js](https://img.shields.io/badge/Next.js-15.2.0-000000?logo=next.js)](https://nextjs.org/) [![Frontend Coverage](https://img.shields.io/badge/Frontend%20Coverage-79.6%25-green)](#coverage) [![Backend Coverage](https://img.shields.io/badge/Backend%20Coverage-61.75%25-yellow)](#coverage)
+[![CI](https://github.com/techspeque/truthteller-ai/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/techspeque/truthteller-ai/actions/workflows/ci.yml) [![Release](https://img.shields.io/github/v/release/techspeque/truthteller-ai?display_name=release)](https://github.com/techspeque/truthteller-ai/releases) [![Rust](https://img.shields.io/badge/Rust-1.93.0-DEA584?logo=rust)](https://www.rust-lang.org/) [![Next.js](https://img.shields.io/badge/Next.js-15.2.0-000000?logo=next.js)](https://nextjs.org/) [![Frontend Coverage](https://img.shields.io/badge/Frontend%20Coverage-84.3%25-brightgreen)](#coverage) [![Backend Coverage](https://img.shields.io/badge/Backend%20Coverage-61.75%25-yellow)](#coverage)
 
 TruthTeller AI is a local app that runs a multi-model deliberation workflow through OpenRouter.
 
@@ -249,9 +249,9 @@ Use one command to compute frontend + backend coverage and print a ready-to-past
 
 Current line coverage snapshot used by the badge:
 
-- Frontend: `79.6%` (`335/421`)
+- Frontend: `84.3%` (`501/594`)
 - Backend (`t2ai-core`): `61.75%` (`1230/1992`)
-- Combined: `64.9%` (`1565/2413`)
+- Combined: `66.9%` (`1731/2586`)
 
 ## Versioning
 
