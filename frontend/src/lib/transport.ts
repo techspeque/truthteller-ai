@@ -136,29 +136,36 @@ const httpTransport: Transport = {
       buildMessageRequestOptions(content, files)
     );
     if (!response.ok) throw new Error('Failed to send message');
+    if (!response.body) throw new Error('Missing response body');
 
-    const reader = response.body!.getReader();
+    const reader = response.body.getReader();
     const decoder = new TextDecoder();
+    let pendingLine = '';
+
+    const parseLine = (rawLine: string) => {
+      const line = rawLine.replace(/\r$/, '');
+      if (!line.startsWith('data: ')) return;
+      const data = line.slice(6);
+      try {
+        const event = JSON.parse(data) as CouncilStreamEvent;
+        onEvent(event.type, event);
+      } catch (e) {
+        log.warn('Failed to parse SSE event', { error: (e as Error).message, data });
+      }
+    };
 
     while (true) {
       const { done, value } = await reader.read();
       if (done) break;
 
-      const chunk = decoder.decode(value);
-      const lines = chunk.split('\n');
-
-      for (const line of lines) {
-        if (line.startsWith('data: ')) {
-          const data = line.slice(6);
-          try {
-            const event = JSON.parse(data) as CouncilStreamEvent;
-            onEvent(event.type, event);
-          } catch (e) {
-            log.warn('Failed to parse SSE event', { error: (e as Error).message, data });
-          }
-        }
-      }
+      pendingLine += decoder.decode(value, { stream: true });
+      const lines = pendingLine.split('\n');
+      pendingLine = lines.pop() || '';
+      lines.forEach(parseLine);
     }
+
+    pendingLine += decoder.decode();
+    if (pendingLine) parseLine(pendingLine);
   },
 
   async getConfig() {
