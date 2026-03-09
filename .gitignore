@@ -13,6 +13,7 @@ node_modules/
 # Next.js
 .next/
 out/
+frontend/coverage/
 *.tsbuildinfo
 
 # Cache artifacts

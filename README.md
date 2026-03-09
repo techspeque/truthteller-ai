@@ -1,5 +1,7 @@
 # TruthTeller AI
 
+[![CI](https://github.com/techspeque/truthteller-ai/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/techspeque/truthteller-ai/actions/workflows/ci.yml) [![Release](https://img.shields.io/github/v/release/techspeque/truthteller-ai?display_name=release)](https://github.com/techspeque/truthteller-ai/releases) [![Rust](https://img.shields.io/badge/Rust-1.93.0-DEA584?logo=rust)](https://www.rust-lang.org/) [![Next.js](https://img.shields.io/badge/Next.js-15.2.0-000000?logo=next.js)](https://nextjs.org/) [![Frontend Coverage](https://img.shields.io/badge/Frontend%20Coverage-36.1%25-red)](#coverage) [![Backend Coverage](https://img.shields.io/badge/Backend%20Coverage-61.75%25-yellow)](#coverage)
+
 TruthTeller AI is a local app that runs a multi-model deliberation workflow through OpenRouter.
 
 Instead of asking one model, you ask a council of models:
@@ -236,6 +238,20 @@ Base URL: `http://localhost:8001`
 Both web (SSE) and native (Tauri events) emit the same event types:
 
 `upload_processing_start`, `upload_processing_complete`, `stage1_start`, `stage1_complete`, `stage2_start`, `stage2_complete`, `stage3_start`, `stage3_complete`, `title_complete`, `complete`, `error`
+
+## Coverage
+
+Use one command to compute frontend + backend coverage and print a ready-to-paste badge line:
+
+```bash
+./scripts/coverage.sh
+```
+
+Current line coverage snapshot used by the badge:
+
+- Frontend: `36.1%` (`152/421`)
+- Backend (`t2ai-core`): `61.75%` (`1230/1992`)
+- Combined: `57.3%` (`1382/2413`)
 
 ## Versioning
 
