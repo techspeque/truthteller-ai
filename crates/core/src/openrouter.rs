@@ -1,8 +1,10 @@
 //! OpenRouter API client for making LLM requests.
 
+use std::error::Error as StdError;
 use std::time::Instant;
 
 use futures::stream::{self, StreamExt};
+use reqwest::header::CONTENT_TYPE;
 use reqwest::Client;
 use serde::{Deserialize, Serialize};
 
@@ -12,6 +14,9 @@ use crate::errors::CouncilError;
 use crate::types::Usage;
 
 const DEFAULT_OPENROUTER_BASE_URL: &str = "https://openrouter.ai";
+const REQUEST_LOG_CHAR_LIMIT: usize = 4_000;
+const RESPONSE_LOG_CHAR_LIMIT: usize = 4_000;
+const ERROR_BODY_CHAR_LIMIT: usize = 320;
 
 fn normalized_base_url() -> String {
     std::env::var("OPENROUTER_BASE_URL")
@@ -41,7 +46,7 @@ pub struct QueryOptions {
 impl Default for QueryOptions {
     fn default() -> Self {
         Self {
-            timeout_secs: 120,
+            timeout_secs: 600,
             retry_attempts: 1,
             retry_backoff_ms: 500,
             max_parallel_requests: 8,
@@ -79,8 +84,8 @@ struct ApiChoice {
 
 #[derive(Deserialize)]
 struct ApiMessage {
-    content: Option<String>,
-    reasoning_details: Option<String>,
+    content: Option<serde_json::Value>,
+    reasoning_details: Option<serde_json::Value>,
 }
 
 #[derive(Deserialize)]
@@ -173,11 +178,24 @@ async fn query_model_once_detailed(
         "model": model,
         "messages": messages,
     });
+    let endpoint = chat_completions_url();
+    let request_preview = summarize_json_value(&payload, REQUEST_LOG_CHAR_LIMIT);
+    let request_chars = serialized_char_count(&payload);
+
+    info!(
+        model,
+        endpoint,
+        timeout_secs,
+        message_count = messages.len(),
+        request_chars,
+        request_preview = %request_preview,
+        "Sending OpenRouter request"
+    );
 
     let start = Instant::now();
 
     let response = client
-        .post(chat_completions_url())
+        .post(&endpoint)
         .header("Authorization", format!("Bearer {api_key}"))
         .header("Content-Type", "application/json")
         .timeout(std::time::Duration::from_secs(timeout_secs))
@@ -193,35 +211,114 @@ async fn query_model_once_detailed(
         }
     };
 
-    if !response.status().is_success() {
-        let status = response.status();
-        let body = response.text().await.unwrap_or_default();
-        error!(model, %status, body, "Model returned error");
-        return Err(format!("HTTP {}: {}", status, summarize_error_body(&body)));
+    let status = response.status();
+    let content_type = response
+        .headers()
+        .get(CONTENT_TYPE)
+        .and_then(|value| value.to_str().ok())
+        .unwrap_or("unknown")
+        .to_string();
+    let upstream_request_id = response
+        .headers()
+        .get("x-request-id")
+        .and_then(|value| value.to_str().ok())
+        .unwrap_or("-")
+        .to_string();
+    let response_body = match response.text().await {
+        Ok(body) => body,
+        Err(e) => {
+            let error_kind = classify_body_read_error(&e);
+            let error_chain = format_error_chain(&e);
+            error!(
+                model,
+                %status,
+                content_type,
+                upstream_request_id,
+                error_kind,
+                request_preview = %request_preview,
+                error_chain = %error_chain,
+                error = %e,
+                "Error reading response body"
+            );
+            return Err(match error_kind {
+                "timeout" => format!("Response body read timeout: {e}"),
+                _ => format!("Response body read error: {e}"),
+            });
+        }
+    };
+    let response_chars = response_body.chars().count();
+    let response_preview = summarize_text(&response_body, RESPONSE_LOG_CHAR_LIMIT);
+
+    if !status.is_success() {
+        error!(
+            model,
+            %status,
+            content_type,
+            upstream_request_id,
+            response_chars,
+            request_preview = %request_preview,
+            response_body = %response_preview,
+            "Model returned error"
+        );
+        return Err(format!(
+            "HTTP {}: {}",
+            status,
+            summarize_error_body(&response_body)
+        ));
     }
 
     let elapsed = start.elapsed().as_secs_f64();
     let elapsed = (elapsed * 100.0).round() / 100.0; // round to 2 decimals
 
-    let data: ApiResponse = match response.json().await {
+    let data: ApiResponse = match serde_json::from_str(&response_body) {
         Ok(d) => d,
         Err(e) => {
-            error!(model, error = %e, "Error parsing response");
-            return Err(format!("Response parse error: {e}"));
+            error!(
+                model,
+                %status,
+                content_type,
+                upstream_request_id,
+                response_chars,
+                request_preview = %request_preview,
+                response_body = %response_preview,
+                error = %e,
+                "Error parsing response"
+            );
+            return Err(format!(
+                "Response parse error: {}; body: {}",
+                e,
+                summarize_error_body(&response_body)
+            ));
         }
     };
 
-    info!(model, elapsed, "Model responded");
+    info!(
+        model,
+        elapsed,
+        %status,
+        content_type,
+        upstream_request_id,
+        response_chars,
+        "Model responded"
+    );
 
-    let message = data
-        .choices
-        .into_iter()
-        .next()
-        .ok_or_else(|| "OpenRouter response contained no choices".to_string())?;
+    let message = data.choices.into_iter().next().ok_or_else(|| {
+        error!(
+            model,
+            %status,
+            content_type,
+            upstream_request_id,
+            response_chars,
+            request_preview = %request_preview,
+            response_body = %response_preview,
+            "OpenRouter response contained no choices"
+        );
+        "OpenRouter response contained no choices".to_string()
+    })?;
 
     Ok(ModelResponse {
-        content: message.message.content.unwrap_or_default(),
-        reasoning_details: message.message.reasoning_details,
+        content: extract_text_field(message.message.content.as_ref()).unwrap_or_default(),
+        reasoning_details: extract_text_field(message.message.reasoning_details.as_ref()),
         latency_seconds: elapsed,
         usage: data.usage.map(|u| Usage {
             prompt_tokens: u.prompt_tokens,
@@ -315,15 +412,190 @@ fn summarize_error_body(body: &str) -> String {
     if trimmed.is_empty() {
         return "empty response body".to_string();
     }
-    const LIMIT: usize = 320;
-    if trimmed.len() <= LIMIT {
-        trimmed.to_string()
-    } else {
-        format!("{}...", &trimmed[..LIMIT])
+    summarize_text(trimmed, ERROR_BODY_CHAR_LIMIT)
+}
+
+fn summarize_json_value(value: &serde_json::Value, limit: usize) -> String {
+    match serde_json::to_string(value) {
+        Ok(serialized) => summarize_text(&serialized, limit),
+        Err(_) => "<failed to serialize request payload>".to_string(),
     }
+}
+
+fn serialized_char_count(value: &serde_json::Value) -> usize {
+    match serde_json::to_string(value) {
+        Ok(serialized) => serialized.chars().count(),
+        Err(_) => 0,
+    }
+}
+
+fn summarize_text(text: &str, limit: usize) -> String {
+    let trimmed = text.trim();
+    if trimmed.is_empty() {
+        return String::new();
+    }
+
+    let mut chars = trimmed.chars();
+    let preview: String = chars.by_ref().take(limit).collect();
+    if chars.next().is_none() {
+        preview
+    } else {
+        format!("{preview}...")
+    }
+}
+
+fn extract_text_field(value: Option<&serde_json::Value>) -> Option<String> {
+    let text = value.and_then(extract_text_value)?;
+    let trimmed = text.trim();
+    if trimmed.is_empty() {
+        None
+    } else {
+        Some(trimmed.to_string())
+    }
+}
+
+fn extract_text_value(value: &serde_json::Value) -> Option<String> {
+    match value {
+        serde_json::Value::Null => None,
+        serde_json::Value::String(text) => Some(text.clone()),
+        serde_json::Value::Number(number) => Some(number.to_string()),
+        serde_json::Value::Bool(flag) => Some(flag.to_string()),
+        serde_json::Value::Array(items) => {
+            let parts: Vec<String> = items
+                .iter()
+                .filter_map(extract_text_value)
+                .filter(|part| !part.trim().is_empty())
+                .collect();
+            if parts.is_empty() {
+                serde_json::to_string(items).ok()
+            } else {
+                Some(parts.join("\n\n"))
+            }
+        }
+        serde_json::Value::Object(map) => {
+            for key in [
+                "text",
+                "content",
+                "reasoning",
+                "reasoning_details",
+                "output_text",
+                "value",
+            ] {
+                if let Some(extracted) = map.get(key).and_then(extract_text_value) {
+                    return Some(extracted);
+                }
+            }
+
+            serde_json::to_string(map).ok()
+        }
+    }
+}
+
+fn classify_body_read_error(error: &reqwest::Error) -> &'static str {
+    if error.is_timeout() || error_chain_indicates_timeout(error) {
+        "timeout"
+    } else if error.is_decode() {
+        "decode"
+    } else {
+        "other"
+    }
+}
+
+fn error_chain_indicates_timeout(error: &reqwest::Error) -> bool {
+    let mut current = error.source();
+    while let Some(source) = current {
+        let message = source.to_string().to_ascii_lowercase();
+        if message.contains("timed out")
+            || message.contains("timeout")
+            || message.contains("deadline has elapsed")
+        {
+            return true;
+        }
+        current = source.source();
+    }
+    false
+}
+
+fn format_error_chain(error: &reqwest::Error) -> String {
+    let mut parts = vec![error.to_string()];
+    let mut current = error.source();
+    while let Some(source) = current {
+        parts.push(source.to_string());
+        current = source.source();
+    }
+    parts.join(": ")
 }
 
 /// Create a reusable HTTP client for OpenRouter requests.
 pub fn create_client() -> Result<Client, CouncilError> {
     Client::builder().build().map_err(CouncilError::Request)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{extract_text_field, summarize_error_body, summarize_json_value, summarize_text};
+
+    #[test]
+    fn summarize_error_body_handles_empty_input() {
+        assert_eq!(summarize_error_body("   "), "empty response body");
+    }
+
+    #[test]
+    fn summarize_text_truncates_at_character_boundary() {
+        assert_eq!(summarize_text("abcdef", 4), "abcd...");
+        assert_eq!(summarize_text("abc", 4), "abc");
+    }
+
+    #[test]
+    fn summarize_json_value_serializes_and_truncates() {
+        let payload = serde_json::json!({
+            "model": "test-model",
+            "messages": [
+                {"role": "user", "content": "abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyz"}
+            ]
+        });
+
+        let preview = summarize_json_value(&payload, 80);
+        assert!(preview.starts_with('{'));
+        assert!(preview.ends_with("..."));
+        assert!(preview.len() <= 83);
+    }
+
+    #[test]
+    fn extract_text_field_accepts_plain_string() {
+        let value = serde_json::json!("plain text");
+        assert_eq!(
+            extract_text_field(Some(&value)).as_deref(),
+            Some("plain text")
+        );
+    }
+
+    #[test]
+    fn extract_text_field_flattens_content_parts() {
+        let value = serde_json::json!([
+            {"type": "text", "text": "First paragraph"},
+            {"type": "text", "text": "Second paragraph"}
+        ]);
+
+        assert_eq!(
+            extract_text_field(Some(&value)).as_deref(),
+            Some("First paragraph\n\nSecond paragraph")
+        );
+    }
+
+    #[test]
+    fn extract_text_field_handles_reasoning_objects() {
+        let value = serde_json::json!({
+            "type": "reasoning",
+            "content": [
+                {"type": "text", "text": "Step one"},
+                {"type": "text", "text": "Step two"}
+            ]
+        });
+
+        assert_eq!(
+            extract_text_field(Some(&value)).as_deref(),
+            Some("Step one\n\nStep two")
+        );
+    }
 }

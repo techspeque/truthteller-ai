@@ -34,7 +34,7 @@ const baseCredentials: CredentialsStatus = {
 const baseConfig: AppConfigResponse = {
   council_models: ['provider/model-a', 'provider/model-b'],
   chairman_model: 'provider/model-a',
-  request_timeout_seconds: 120,
+  request_timeout_seconds: 600,
   max_parallel_requests: 8,
   retry_attempts: 1,
   retry_backoff_ms: 500,
@@ -142,7 +142,7 @@ describe('Settings', () => {
     const timeoutInput = screen.getByLabelText('Request Timeout (seconds)');
     fireEvent.change(timeoutInput, { target: { value: '5' } });
 
-    expect(await screen.findByText('Request timeout must be between 10 and 300 seconds.')).toBeInTheDocument();
+    expect(await screen.findByText('Request timeout must be between 10 and 600 seconds.')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Save' })).toBeDisabled();
   });
 

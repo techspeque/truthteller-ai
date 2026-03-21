@@ -231,10 +231,10 @@ pub async fn update_config(
             "Chairman model must be one of the council models".into(),
         ));
     }
-    if !(10..=300).contains(&cfg.request_timeout_seconds) {
+    if !(10..=600).contains(&cfg.request_timeout_seconds) {
         return Err(ApiError(
             StatusCode::BAD_REQUEST,
-            "request_timeout_seconds must be between 10 and 300".into(),
+            "request_timeout_seconds must be between 10 and 600".into(),
         ));
     }
     if !(1..=16).contains(&cfg.max_parallel_requests) {

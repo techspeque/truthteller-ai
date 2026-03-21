@@ -354,8 +354,8 @@ fn update_config(
     if !config.council_models.contains(&config.chairman_model) {
         return Err("Chairman model must be one of the council models".into());
     }
-    if !(10..=300).contains(&config.request_timeout_seconds) {
-        return Err("request_timeout_seconds must be between 10 and 300".into());
+    if !(10..=600).contains(&config.request_timeout_seconds) {
+        return Err("request_timeout_seconds must be between 10 and 600".into());
     }
     if !(1..=16).contains(&config.max_parallel_requests) {
         return Err("max_parallel_requests must be between 1 and 16".into());

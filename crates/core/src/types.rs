@@ -229,7 +229,7 @@ fn default_chairman_model() -> String {
 }
 
 fn default_request_timeout_seconds() -> u64 {
-    120
+    600
 }
 
 fn default_max_parallel_requests() -> u32 {

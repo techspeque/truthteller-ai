@@ -62,7 +62,7 @@ function withDefaults(config: Partial<EditableConfig> = {}): EditableConfig {
   return {
     council_models: Array.isArray(config.council_models) ? config.council_models : [],
     chairman_model: config.chairman_model || '',
-    request_timeout_seconds: Number(config.request_timeout_seconds ?? 120),
+    request_timeout_seconds: Number(config.request_timeout_seconds ?? 600),
     max_parallel_requests: Number(config.max_parallel_requests ?? 8),
     retry_attempts: Number(config.retry_attempts ?? 1),
     retry_backoff_ms: Number(config.retry_backoff_ms ?? 500),
@@ -141,8 +141,8 @@ function validateConfig(config: EditableConfig | null): string[] {
   const retries = Number(config.retry_attempts);
   const backoff = Number(config.retry_backoff_ms);
 
-  if (!Number.isFinite(timeout) || timeout < 10 || timeout > 300) {
-    issues.push('Request timeout must be between 10 and 300 seconds.');
+  if (!Number.isFinite(timeout) || timeout < 10 || timeout > 600) {
+    issues.push('Request timeout must be between 10 and 600 seconds.');
   }
   if (!Number.isFinite(parallel) || parallel < 1 || parallel > 16) {
     issues.push('Max parallel requests must be between 1 and 16.');
@@ -626,7 +626,7 @@ export default function Settings({ onClose, onSaved }: SettingsProps) {
               <label className="settings-field">
                 <span>Request Timeout (seconds)</span>
                 <input
-                  type="number" min="10" max="300"
+                  type="number" min="10" max="600"
                   value={config.request_timeout_seconds}
                   onChange={(e) => setConfig((prev) => prev ? { ...prev, request_timeout_seconds: Number(e.target.value) } : prev)}
                 />
