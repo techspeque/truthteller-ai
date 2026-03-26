@@ -1,7 +1,7 @@
 {
   "$schema": "https://raw.githubusercontent.com/nicollasricas/vscode-tauri/refs/heads/main/schemas/tauri.conf.schema.json",
   "productName": "TruthTeller AI",
-  "version": "0.2.2",
+  "version": "0.2.3",
   "identifier": "dev.t2ai.app",
   "build": {
     "beforeDevCommand": "npm run dev",

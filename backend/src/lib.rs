@@ -6,8 +6,9 @@ use std::sync::{Arc, OnceLock};
 use reqwest::Client;
 use serde::Deserialize;
 use tauri::{AppHandle, Emitter, Manager, State};
+use tracing::info;
 #[cfg(target_os = "macos")]
-use tracing::{info, warn};
+use tracing::warn;
 use tracing_appender::non_blocking::WorkerGuard;
 use tracing_subscriber::EnvFilter;
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
