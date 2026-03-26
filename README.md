@@ -170,28 +170,50 @@ This starts the Next.js dev server and opens the Tauri window automatically.
 cargo tauri build
 ```
 
-Produces a `.app` bundle and `.dmg` installer in `target/release/bundle/`.
+Produces platform-appropriate native bundles in `target/release/bundle/`.
+
+- macOS: `.app` bundle and `.dmg` installer
+- Linux: `.deb` package and `.AppImage` bundle
 
 ### Build release with prereq auto-install
 
 ```bash
 ./scripts/release.sh --platform macos
+./scripts/release.sh --platform linux
 ```
 
 This script:
 
 - verifies/installs prerequisites (`scripts/prereqs.sh`)
 - runs optional checks/tests
-- builds Tauri release artifacts (`.app` + `.dmg`)
+- builds Tauri release artifacts for the current platform
 
 Useful variants:
 
 ```bash
 # faster build (skip checks/tests)
 ./scripts/release.sh --platform macos --skip-checks --skip-tests
+./scripts/release.sh --platform linux --skip-checks --skip-tests
 
 # cross-target build
 ./scripts/release.sh --platform macos --target aarch64-apple-darwin
+```
+
+For Ubuntu release builds, install the Tauri Linux system packages first:
+
+```bash
+sudo apt update
+sudo apt install -y \
+  libwebkit2gtk-4.1-dev \
+  build-essential \
+  curl \
+  wget \
+  file \
+  libxdo-dev \
+  libssl-dev \
+  libayatana-appindicator3-dev \
+  librsvg2-dev \
+  patchelf
 ```
 
 ## Upload Support and Limits
@@ -267,7 +289,7 @@ This repo uses a single app version across Rust crates, Tauri, and frontend pack
 - Bump all package versions in one command:
 
   ```bash
-  ./scripts/version.sh set 0.2.0
+  ./scripts/version.sh set 0.2.1
   ```
 
 `./scripts/ci.sh` and `./scripts/release.sh` both run version consistency checks automatically.
@@ -282,7 +304,7 @@ GitHub Actions workflows are included in `.github/workflows/`:
 - `release.yml` (tag push `vX.Y.Z`, plus manual dispatch)
   - Reuses `./scripts/release.sh`
   - Verifies tag version matches `VERSION`
-  - Builds macOS Tauri artifacts and publishes a GitHub Release on tag runs
+  - Builds macOS and Ubuntu Tauri artifacts and publishes a GitHub Release on tag runs
 
 Release flow:
 

@@ -54,13 +54,92 @@ jobs:
             backend/target/release/bundle/**/*.dmg
             backend/target/release/bundle/**/*.app.tar.gz
 
-      - name: Publish GitHub release
+  release-ubuntu:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 90
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install Linux system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            libwebkit2gtk-4.1-dev \
+            build-essential \
+            curl \
+            wget \
+            file \
+            libxdo-dev \
+            libssl-dev \
+            libayatana-appindicator3-dev \
+            librsvg2-dev \
+            patchelf
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
+
+      - name: Rust cache
+        uses: Swatinem/rust-cache@v2
+
+      - name: Install prerequisites
+        run: ./scripts/prereqs.sh --platform linux --ensure-tauri-cli --npm-ci
+
+      - name: Verify tag/version alignment
         if: startsWith(github.ref, 'refs/tags/v')
+        run: ./scripts/version.sh check --expect-tag "${GITHUB_REF_NAME}"
+
+      - name: Build release
+        run: ./scripts/release.sh --platform linux --skip-prereqs
+
+      - name: Upload release artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: t2ai-ubuntu-bundle
+          if-no-files-found: error
+          path: |
+            target/release/bundle/**/*.deb
+            target/release/bundle/**/*.AppImage
+            backend/target/release/bundle/**/*.deb
+            backend/target/release/bundle/**/*.AppImage
+
+  publish-release:
+    if: startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-22.04
+    timeout-minutes: 30
+    needs:
+      - release-macos
+      - release-ubuntu
+
+    steps:
+      - name: Download macOS artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: t2ai-macos-bundle
+          path: dist/macos
+
+      - name: Download Ubuntu artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: t2ai-ubuntu-bundle
+          path: dist/ubuntu
+
+      - name: Publish GitHub release
         uses: softprops/action-gh-release@v2
         with:
           generate_release_notes: true
           files: |
-            target/release/bundle/**/*.dmg
-            target/release/bundle/**/*.app.tar.gz
-            backend/target/release/bundle/**/*.dmg
-            backend/target/release/bundle/**/*.app.tar.gz
+            dist/macos/**/*.dmg
+            dist/macos/**/*.app.tar.gz
+            dist/ubuntu/**/*.deb
+            dist/ubuntu/**/*.AppImage

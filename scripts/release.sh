@@ -3,6 +3,7 @@
 #
 # Usage:
 #   ./scripts/release.sh --platform macos
+#   ./scripts/release.sh --platform linux
 #   ./scripts/release.sh --platform macos --skip-checks --skip-tests
 #   ./scripts/release.sh --platform macos --target aarch64-apple-darwin
 
@@ -165,14 +166,23 @@ if [[ "${RUN_TESTS}" -eq 1 ]]; then
 fi
 
 echo "=== Building ${PLATFORM} release bundle ==="
+case "${PLATFORM}" in
+  macos)
+    BUNDLE_TARGETS="app,dmg"
+    ;;
+  linux)
+    BUNDLE_TARGETS="deb,appimage"
+    ;;
+esac
+
 if [[ -n "${TARGET}" ]]; then
-  cargo tauri build --target "${TARGET}"
+  cargo tauri build --bundles "${BUNDLE_TARGETS}" --target "${TARGET}"
   CANDIDATE_BUNDLE_DIRS=(
     "${ROOT_DIR}/target/${TARGET}/release/bundle"
     "${ROOT_DIR}/backend/target/${TARGET}/release/bundle"
   )
 else
-  cargo tauri build
+  cargo tauri build --bundles "${BUNDLE_TARGETS}"
   CANDIDATE_BUNDLE_DIRS=(
     "${ROOT_DIR}/target/release/bundle"
     "${ROOT_DIR}/backend/target/release/bundle"
@@ -201,7 +211,7 @@ if [[ -n "${FOUND_BUNDLE_DIR}" ]]; then
   if [[ "${PLATFORM}" == "macos" ]]; then
     find "${FOUND_BUNDLE_DIR}" \( -name "*.dmg" -o -name "*.app" -o -name "*.app.tar.gz" \) | sed 's#^#  - #'
   else
-    find "${FOUND_BUNDLE_DIR}" \( -name "*.AppImage" -o -name "*.deb" -o -name "*.rpm" -o -name "*.tar.gz" \) | sed 's#^#  - #'
+    find "${FOUND_BUNDLE_DIR}" \( -name "*.AppImage" -o -name "*.appimage" -o -name "*.deb" -o -name "*.tar.gz" \) | sed 's#^#  - #'
   fi
 else
   echo "  - (bundle directory not found)"
