@@ -6,6 +6,7 @@ use std::sync::{Arc, OnceLock};
 use reqwest::Client;
 use serde::Deserialize;
 use tauri::{AppHandle, Emitter, Manager, State};
+#[cfg(target_os = "macos")]
 use tracing::{info, warn};
 use tracing_appender::non_blocking::WorkerGuard;
 use tracing_subscriber::EnvFilter;
@@ -92,6 +93,7 @@ fn absolute_path_display(path: &Path) -> String {
     }
 }
 
+#[cfg(target_os = "macos")]
 fn dir_has_entries(path: &Path) -> bool {
     match std::fs::read_dir(path) {
         Ok(mut entries) => entries.next().is_some(),
@@ -99,6 +101,7 @@ fn dir_has_entries(path: &Path) -> bool {
     }
 }
 
+#[cfg(target_os = "macos")]
 fn data_dir_has_user_data(data_dir: &Path) -> bool {
     data_dir.join("config.json").exists()
         || data_dir.join("secrets.json").exists()
