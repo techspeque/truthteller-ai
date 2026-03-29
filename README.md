@@ -283,7 +283,7 @@ This repo uses a single app version across Rust crates, Tauri, and frontend pack
 
 Latest release notes:
 
-- [v0.3.0](./docs/releases/v0.3.0.md)
+- [v0.3.1](./docs/releases/v0.3.1.md)
 
 - Source of truth: `VERSION`
 - Check consistency:

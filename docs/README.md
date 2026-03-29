@@ -18,7 +18,7 @@ Start with the guide that matches what you need.
 ## Release Docs
 
 - Versioned release notes live in `docs/releases/vX.Y.Z.md`
-- Current release notes: [v0.3.0](./releases/v0.3.0.md)
+- Current release notes: [v0.3.1](./releases/v0.3.1.md)
 - Release-note policy and automation expectations live in [docs/releases/AGENTS.md](./releases/AGENTS.md)
 
 Every tagged release must have a matching `docs/releases/vX.Y.Z.md` file committed before the tag is pushed.
