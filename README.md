@@ -281,6 +281,10 @@ Current line coverage snapshot used by the badge:
 
 This repo uses a single app version across Rust crates, Tauri, and frontend package metadata.
 
+Latest release notes:
+
+- [v0.3.0](./docs/releases/v0.3.0.md)
+
 - Source of truth: `VERSION`
 - Check consistency:
 
