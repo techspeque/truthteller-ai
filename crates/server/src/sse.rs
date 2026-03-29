@@ -14,7 +14,7 @@ use t2ai_core::attachments::{
 };
 use t2ai_core::config;
 use t2ai_core::council::{
-    calculate_aggregate_rankings, generate_conversation_title,
+    calculate_aggregate_rankings, generate_conversation_title_with_config,
     stage1_collect_responses_with_config, stage2_collect_rankings_with_config,
     stage3_synthesize_final_with_config,
 };
@@ -107,6 +107,7 @@ pub async fn send_message_stream(
 
         let user_query = effective_user_query(&content);
         let stage1_query = build_stage1_query(&user_query, &processed.file_context);
+        let cfg = config::load_config(state.data_dir());
 
         // Save user message
         if let Err(e) =
@@ -127,14 +128,13 @@ pub async fn send_message_stream(
             } else {
                 content.clone()
             };
+            let cfg = cfg.clone();
             Some(tokio::spawn(async move {
-                generate_conversation_title(&client, &api_key, &seed).await
+                generate_conversation_title_with_config(&client, &api_key, &seed, &cfg).await
             }))
         } else {
             None
         };
-
-        let cfg = config::load_config(state.data_dir());
 
         // Stage 1
         events.push(sse_event(serde_json::json!({"type": "stage1_start"})));
@@ -331,6 +331,7 @@ pub async fn send_message_stream_json(
         let mut events: Vec<Event> = Vec::new();
 
         let user_query = effective_user_query(&content);
+        let cfg = config::load_config(state.data_dir());
 
         // Save user message
         if let Err(e) = storage::add_user_message(state.data_dir(), id, &content, vec![]) {
@@ -345,14 +346,13 @@ pub async fn send_message_stream_json(
             let client = state.http_client().clone();
             let api_key = api_key.clone();
             let seed = content.clone();
+            let cfg = cfg.clone();
             Some(tokio::spawn(async move {
-                generate_conversation_title(&client, &api_key, &seed).await
+                generate_conversation_title_with_config(&client, &api_key, &seed, &cfg).await
             }))
         } else {
             None
         };
-
-        let cfg = config::load_config(state.data_dir());
 
         // Stage 1
         events.push(sse_event(serde_json::json!({"type": "stage1_start"})));

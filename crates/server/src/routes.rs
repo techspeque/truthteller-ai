@@ -14,7 +14,7 @@ use t2ai_core::attachments::{
 };
 use t2ai_core::config;
 use t2ai_core::council::{
-    calculate_aggregate_rankings, generate_conversation_title, run_full_council,
+    calculate_aggregate_rankings, generate_conversation_title_with_config, run_full_council,
     stage1_collect_responses_with_config, stage2_collect_rankings_with_config,
     stage3_synthesize_final_with_config,
 };
@@ -410,7 +410,13 @@ pub async fn send_message(
 
     // Generate title for first message
     if is_first_message {
-        let title = generate_conversation_title(state.http_client(), &api_key, &user_query).await;
+        let title = generate_conversation_title_with_config(
+            state.http_client(),
+            &api_key,
+            &user_query,
+            &cfg,
+        )
+        .await;
         if let Err(e) = storage::update_conversation_title(state.data_dir(), id, &title) {
             warn!(conversation_id = %id, error = %e, "Failed to update conversation title");
         }
@@ -503,7 +509,13 @@ pub async fn send_message_multipart(
         } else {
             &content
         };
-        let title = generate_conversation_title(state.http_client(), &api_key, title_seed).await;
+        let title = generate_conversation_title_with_config(
+            state.http_client(),
+            &api_key,
+            title_seed,
+            &cfg,
+        )
+        .await;
         if let Err(e) = storage::update_conversation_title(state.data_dir(), id, &title) {
             warn!(conversation_id = %id, error = %e, "Failed to update conversation title");
         }

@@ -19,7 +19,7 @@ use t2ai_core::attachments::{
 };
 use t2ai_core::config;
 use t2ai_core::council::{
-    calculate_aggregate_rankings, generate_conversation_title, run_full_council,
+    calculate_aggregate_rankings, generate_conversation_title_with_config, run_full_council,
     stage1_collect_responses_with_config, stage2_collect_rankings_with_config,
     stage3_synthesize_final_with_config,
 };
@@ -521,7 +521,13 @@ async fn send_message(
     let api_key = resolve_active_api_key(&state)?;
 
     if is_first {
-        let title = generate_conversation_title(&state.http_client, &api_key, &user_query).await;
+        let title = generate_conversation_title_with_config(
+            &state.http_client,
+            &api_key,
+            &user_query,
+            &cfg,
+        )
+        .await;
         if let Err(e) = storage::update_conversation_title(&state.data_dir, id, &title) {
             tracing::warn!(conversation_id = %id, error = %e, "Failed to update conversation title");
         }
@@ -610,6 +616,7 @@ async fn send_message_stream(
 
     let user_query = effective_user_query(&content);
     let stage1_query = build_stage1_query(&user_query, &processed.file_context);
+    let cfg = config::load_config(&state.data_dir);
     let api_key = match resolve_active_api_key(&state) {
         Ok(k) => k,
         Err(e) => {
@@ -636,14 +643,13 @@ async fn send_message_stream(
         } else {
             content.clone()
         };
+        let cfg = cfg.clone();
         Some(tokio::spawn(async move {
-            generate_conversation_title(&client, &api_key, &seed).await
+            generate_conversation_title_with_config(&client, &api_key, &seed, &cfg).await
         }))
     } else {
         None
     };
-
-    let cfg = config::load_config(&state.data_dir);
 
     // Stage 1
     emit_event(&app, serde_json::json!({"type": "stage1_start"}));

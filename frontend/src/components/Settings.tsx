@@ -510,16 +510,6 @@ export default function Settings({ onClose, onSaved }: SettingsProps) {
                   <option value="markdown">Markdown</option>
                 </select>
               </label>
-              <label className="settings-checkbox">
-                <input
-                  type="checkbox"
-                  checked={config.insights_expanded_default}
-                  onChange={(e) =>
-                    setConfig((prev) => prev ? { ...prev, insights_expanded_default: e.target.checked } : prev)
-                  }
-                />
-                <span>Expand insights by default</span>
-              </label>
             </div>
           )}
 
@@ -698,9 +688,6 @@ export default function Settings({ onClose, onSaved }: SettingsProps) {
 
               {storageInfo && (
                 <>
-                  <div className="storage-runtime-chip">
-                    Runtime: {storageInfo.runtime || runtime}
-                  </div>
                   {runtime === 'tauri' && (
                     <div className="settings-actions-inline">
                       <button type="button" className="btn-inline" onClick={handleOpenLogsFolder} disabled={openingLogs}>

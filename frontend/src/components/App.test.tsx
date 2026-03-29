@@ -343,14 +343,12 @@ describe('App', () => {
     fireEvent.click(screen.getByText('save-settings-dark'));
     await waitFor(() => {
       expect(screen.getByTestId('sidebar-theme').textContent).toBe('dark');
-      expect(chatState.latestProps.insightsExpandedDefault).toBe(true);
     });
 
     fireEvent.click(screen.getByText('open-settings'));
     fireEvent.click(screen.getByText('save-settings-system'));
     await waitFor(() => {
       expect(screen.getByTestId('sidebar-theme').textContent).toBe('dark');
-      expect(chatState.latestProps.insightsExpandedDefault).toBe(false);
     });
   });
 });

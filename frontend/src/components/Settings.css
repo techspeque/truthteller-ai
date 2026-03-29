@@ -24,7 +24,7 @@
   background: var(--bg-elevated);
   border: 1px solid var(--border-color);
   border-radius: 16px;
-  width: 600px;
+  width: 750px;
   max-height: 82vh;
   display: flex;
   flex-direction: column;

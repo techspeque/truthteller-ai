@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, type FormEvent, type ChangeEvent } from 'react';
+import { useState, useEffect, useRef, useCallback, type FormEvent, type ChangeEvent } from 'react';
 import ReactMarkdown from 'react-markdown';
 import Stage1 from './Stage1';
 import Stage2 from './Stage2';
@@ -17,7 +17,6 @@ interface ChatInterfaceProps {
   backendOk: boolean | null;
   onExport: () => void;
   onRerunAssistant: (assistantIndex: number, options: { stage?: string; includeModels?: string[]; chairmanModel?: string | null }) => void;
-  insightsExpandedDefault?: boolean;
 }
 
 export default function ChatInterface({
@@ -30,13 +29,13 @@ export default function ChatInterface({
   backendOk,
   onExport,
   onRerunAssistant,
-  insightsExpandedDefault = false,
 }: ChatInterfaceProps) {
   const [input, setInput] = useState('');
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
-  const [expandedInsights, setExpandedInsights] = useState<Record<number, boolean>>({});
+  const [insightsDialogIndex, setInsightsDialogIndex] = useState<number | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const dialogRef = useRef<HTMLDialogElement>(null);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -110,37 +109,33 @@ export default function ChatInterface({
     );
   }
 
-  const getNearestUserMessage = (index: number): UserMessage | null => {
-    for (let i = index - 1; i >= 0; i--) {
-      const msg = messages[i];
-      if (msg?.role === 'user') {
-        return msg;
-      }
-    }
-    return null;
-  };
-
   const getTiming = (message: AssistantMessage) => message.timing || message.metadata?.timing || null;
 
-  const toggleInsights = (index: number) => {
-    const defaultExpanded = Boolean(insightsExpandedDefault);
-    setExpandedInsights((prev) => ({
-      ...prev,
-      [index]: !(
-        Object.prototype.hasOwnProperty.call(prev, index)
-          ? prev[index]
-          : defaultExpanded
-      ),
-    }));
-  };
+  const openInsightsDialog = useCallback((index: number) => {
+    setInsightsDialogIndex(index);
+  }, []);
 
-  const isInsightsExpanded = (index: number) => (
-    Boolean(
-    Object.prototype.hasOwnProperty.call(expandedInsights, index)
-      ? expandedInsights[index]
-      : insightsExpandedDefault
-    )
-  );
+  const closeInsightsDialog = useCallback(() => {
+    setInsightsDialogIndex(null);
+  }, []);
+
+  useEffect(() => {
+    const dialog = dialogRef.current;
+    if (!dialog) return;
+    if (insightsDialogIndex !== null) {
+      if (!dialog.open) dialog.showModal();
+    } else {
+      if (dialog.open) dialog.close();
+    }
+  }, [insightsDialogIndex]);
+
+  useEffect(() => {
+    const dialog = dialogRef.current;
+    if (!dialog) return;
+    const handleClose = () => setInsightsDialogIndex(null);
+    dialog.addEventListener('close', handleClose);
+    return () => dialog.removeEventListener('close', handleClose);
+  }, []);
 
   return (
     <div className="chat-interface">
@@ -266,26 +261,16 @@ export default function ChatInterface({
                   )}
                   {msg.stage3 && <Stage3 finalResponse={msg.stage3} />}
 
-                  {msg.stage3 && onRerunAssistant && (
+                  {msg.stage3 && (
                     <div className="insights-section">
                       <button
                         type="button"
                         className="insights-toggle"
-                        onClick={() => toggleInsights(index)}
-                        aria-expanded={isInsightsExpanded(index)}
+                        onClick={() => openInsightsDialog(index)}
                       >
-                        {isInsightsExpanded(index) ? 'Hide' : 'Show'} Council Insights
+                        Council Insights
                         {index === latestAssistantInsightIndex ? ' (latest)' : ''}
                       </button>
-                      {isInsightsExpanded(index) && (
-                        <CouncilInsights
-                          assistantMessage={msg}
-                          userMessage={getNearestUserMessage(index)}
-                          assistantIndex={index}
-                          onRerunAssistant={onRerunAssistant}
-                          isBusy={isLoading}
-                        />
-                      )}
                     </div>
                   )}
                 </div>
@@ -368,6 +353,25 @@ export default function ChatInterface({
           Send
         </button>
       </form>
+
+      <dialog ref={dialogRef} className="insights-dialog" onClick={(e) => { if (e.target === e.currentTarget) closeInsightsDialog(); }}>
+        <div className="insights-dialog-inner">
+          <div className="insights-dialog-header">
+            <h3>Council Insights</h3>
+            <button type="button" className="insights-dialog-close" onClick={closeInsightsDialog}>
+              Close
+            </button>
+          </div>
+          {insightsDialogIndex !== null && messages[insightsDialogIndex]?.role === 'assistant' && (
+            <CouncilInsights
+              assistantMessage={messages[insightsDialogIndex] as AssistantMessage}
+              assistantIndex={insightsDialogIndex}
+              onRerunAssistant={onRerunAssistant}
+              isBusy={isLoading}
+            />
+          )}
+        </div>
+      </dialog>
     </div>
   );
 }

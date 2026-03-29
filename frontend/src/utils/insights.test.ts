@@ -194,4 +194,145 @@ describe('insights utilities', () => {
     expect(buildTraceabilityData([], null, [])).toEqual([]);
     expect(buildDiffData([], 'a', 'b')).toEqual({ shared: [], leftOnly: [], rightOnly: [] });
   });
+
+  describe('model failure scenarios', () => {
+    // Scenario: 4 models configured, 1 failed in stage1 (model-d)
+    // Stage1 has 3 successful responses, stage2 has evaluators ranking those 3
+    const failureStage1: StageResult[] = [
+      { model: 'p/model-a', response: 'Alpha answer with details.', latency_seconds: 1, usage: { prompt_tokens: 10, completion_tokens: 20, total_tokens: 30 } },
+      { model: 'p/model-b', response: 'Beta answer with details.', latency_seconds: 2, usage: { prompt_tokens: 11, completion_tokens: 21, total_tokens: 32 } },
+      { model: 'p/model-c', response: 'Gamma answer with details.', latency_seconds: 3, usage: { prompt_tokens: 12, completion_tokens: 22, total_tokens: 34 } },
+    ];
+
+    const failureStage2: RankingResult[] = [
+      { model: 'p/model-a', ranking: 'eval', parsed_ranking: ['Response A', 'Response B', 'Response C'], latency_seconds: 4 },
+      { model: 'p/model-b', ranking: 'eval', parsed_ranking: ['Response B', 'Response C', 'Response A'], latency_seconds: 5 },
+      // model-d failed in stage1 but succeeded as stage2 evaluator
+      { model: 'p/model-d', ranking: 'eval', parsed_ranking: ['Response A', 'Response C', 'Response B'], latency_seconds: 6 },
+    ];
+
+    const failureStage3: FinalResult = {
+      model: 'p/model-a',
+      response: 'Synthesized final answer.',
+      latency_seconds: 7,
+    };
+
+    const failureMetadata = {
+      label_to_model: { 'Response A': 'p/model-a', 'Response B': 'p/model-b', 'Response C': 'p/model-c' },
+      aggregate_rankings: [
+        { model: 'p/model-a', average_rank: 1.33, rankings_count: 3 },
+        { model: 'p/model-c', average_rank: 2.0, rankings_count: 3 },
+        { model: 'p/model-b', average_rank: 2.67, rankings_count: 3 },
+      ],
+      failed_models: ['p/model-d'],
+    };
+
+    it('consensus matrix only shows successful stage1 models as candidates', () => {
+      const consensus = buildConsensusData(failureStage1, failureStage2, failureMetadata);
+
+      expect(consensus.candidateModels).toEqual(['p/model-a', 'p/model-b', 'p/model-c']);
+      expect(consensus.candidateModels).not.toContain('p/model-d');
+      expect(consensus.matrix).toHaveLength(3);
+      // Each evaluator should have ranks for all 3 candidates
+      for (const row of consensus.matrix) {
+        expect(row.ranks).toHaveLength(3);
+        expect(row.ranks.every((r) => r >= 1 && r <= 3)).toBe(true);
+      }
+      expect(consensus.consensusScore).toBeGreaterThan(0);
+      expect(consensus.consensusScore).toBeLessThanOrEqual(1);
+    });
+
+    it('influence graph includes failed-stage1 model as evaluator when it succeeded in stage2', () => {
+      const consensus = buildConsensusData(failureStage1, failureStage2, failureMetadata);
+      const influence = buildInfluenceData(failureStage1, failureStage2, failureStage3, failureMetadata, consensus);
+
+      // Stage1 models are only the successful ones
+      expect(influence.stage1Models).toEqual(['p/model-a', 'p/model-b', 'p/model-c']);
+      // Evaluators include model-d (failed stage1 but succeeded as evaluator)
+      expect(influence.evaluators).toContain('p/model-d');
+      expect(influence.evaluators).toHaveLength(3);
+      // Edges from stage1 → stage2 should all reference valid stage1 models
+      for (const edge of influence.stage1ToStage2) {
+        expect(influence.stage1Models).toContain(edge.from);
+        expect(influence.evaluators).toContain(edge.to);
+        expect(edge.weight).toBeGreaterThan(0);
+        expect(edge.weight).toBeLessThanOrEqual(1);
+      }
+      // 3 candidates × 3 evaluators = 9 edges
+      expect(influence.stage1ToStage2).toHaveLength(9);
+      expect(influence.stage2ToFinal).toHaveLength(3);
+    });
+
+    it('uncertainty panel reflects failed models in success rate and confidence', () => {
+      const consensus = buildConsensusData(failureStage1, failureStage2, failureMetadata);
+      const uncertainty = buildUncertaintyData(failureStage1, failureStage2, failureStage3, failureMetadata, consensus);
+
+      // 3 succeeded, 1 failed → 75%
+      expect(uncertainty.successRate).toBe(75);
+      expect(uncertainty.confidenceScore).toBeGreaterThanOrEqual(0);
+      expect(uncertainty.confidenceScore).toBeLessThanOrEqual(100);
+      expect(uncertainty.rankSpread).toBeGreaterThanOrEqual(0);
+      expect(uncertainty.consensusScore).toBeGreaterThan(0);
+    });
+
+    it('cost-latency tracks failed models separately', () => {
+      const cost = buildCostLatencyRows(failureStage1, failureStage2, failureStage3, failureMetadata);
+
+      expect(cost.failedModels).toEqual(['p/model-d']);
+      // 3 stage1 + 3 stage2 + 1 stage3 = 7 rows (no row for failed model)
+      expect(cost.rows).toHaveLength(7);
+      expect(cost.rows.every((r) => r.model !== 'p/model-d' || r.stage === 'Stage 2')).toBe(true);
+    });
+
+    it('handles only 1 model succeeding in stage1', () => {
+      const singleStage1: StageResult[] = [
+        { model: 'p/model-a', response: 'Solo answer.', latency_seconds: 1 },
+      ];
+      const singleStage2: RankingResult[] = [
+        { model: 'p/model-b', ranking: 'eval', parsed_ranking: ['Response A'], latency_seconds: 2 },
+      ];
+      const singleMeta = {
+        label_to_model: { 'Response A': 'p/model-a' },
+        aggregate_rankings: [{ model: 'p/model-a', average_rank: 1, rankings_count: 1 }],
+        failed_models: ['p/model-b', 'p/model-c', 'p/model-d'],
+      };
+
+      const consensus = buildConsensusData(singleStage1, singleStage2, singleMeta);
+      expect(consensus.candidateModels).toEqual(['p/model-a']);
+      expect(consensus.matrix).toHaveLength(1);
+      expect(consensus.matrix[0]?.ranks).toEqual([1]);
+      // With only 1 candidate, consensus is 0 (needs >= 2 for meaningful comparison)
+      expect(consensus.consensusScore).toBe(0);
+
+      const influence = buildInfluenceData(singleStage1, singleStage2, { model: 'p/model-a', response: 'final' }, singleMeta, consensus);
+      expect(influence.stage1Models).toHaveLength(1);
+      expect(influence.evaluators).toHaveLength(1);
+      expect(influence.stage1ToStage2).toHaveLength(1);
+      expect(influence.stage2ToFinal).toHaveLength(1);
+
+      const uncertainty = buildUncertaintyData(singleStage1, singleStage2, { model: 'p/model-a', response: 'final' }, singleMeta, consensus);
+      // 1 succeeded, 3 failed → 25%
+      expect(uncertainty.successRate).toBe(25);
+      expect(uncertainty.confidenceScore).toBeGreaterThanOrEqual(0);
+      expect(uncertainty.confidenceScore).toBeLessThanOrEqual(100);
+    });
+
+    it('handles stage2 evaluators also failing (empty stage2)', () => {
+      const consensus = buildConsensusData(failureStage1, [], failureMetadata);
+      expect(consensus.matrix).toEqual([]);
+      expect(consensus.consensusScore).toBe(0);
+      expect(consensus.candidateModels).toHaveLength(3);
+
+      const influence = buildInfluenceData(failureStage1, [], failureStage3, failureMetadata, consensus);
+      expect(influence.stage1Models).toHaveLength(3);
+      expect(influence.evaluators).toHaveLength(0);
+      expect(influence.stage1ToStage2).toHaveLength(0);
+      expect(influence.stage2ToFinal).toHaveLength(0);
+
+      const uncertainty = buildUncertaintyData(failureStage1, [], failureStage3, failureMetadata, consensus);
+      expect(uncertainty.consensusScore).toBe(0);
+      expect(uncertainty.successRate).toBe(75);
+      expect(uncertainty.confidenceScore).toBeGreaterThanOrEqual(0);
+    });
+  });
 });

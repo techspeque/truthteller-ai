@@ -1,7 +1,6 @@
 .insights-root {
   display: grid;
   gap: 16px;
-  margin-top: 16px;
 }
 
 .insight-card {

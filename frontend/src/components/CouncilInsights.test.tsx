@@ -1,6 +1,6 @@
 import { fireEvent, render, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
-import type { AssistantMessage, UserMessage } from '@/types/api';
+import type { AssistantMessage } from '@/types/api';
 import CouncilInsights from './CouncilInsights';
 
 function buildAssistantMessage(): AssistantMessage {
@@ -60,20 +60,6 @@ function buildAssistantMessage(): AssistantMessage {
   };
 }
 
-const userMessage: UserMessage = {
-  role: 'user',
-  content: 'Analyze this file',
-  attachments: [
-    {
-      id: 'f1',
-      filename: 'report.pdf',
-      size_bytes: 2048,
-      preview: 'Report evidence and growth details',
-      trace_excerpt: 'Growth evidence in report',
-    },
-  ],
-};
-
 describe('CouncilInsights', () => {
   it('renders nothing when stage3 is missing', () => {
     const noStage3: AssistantMessage = {
@@ -87,7 +73,6 @@ describe('CouncilInsights', () => {
     const { container } = render(
       <CouncilInsights
         assistantMessage={noStage3}
-        userMessage={userMessage}
         assistantIndex={2}
         onRerunAssistant={vi.fn()}
         isBusy={false}
@@ -102,7 +87,6 @@ describe('CouncilInsights', () => {
     render(
       <CouncilInsights
         assistantMessage={buildAssistantMessage()}
-        userMessage={userMessage}
         assistantIndex={5}
         onRerunAssistant={onRerunAssistant}
         isBusy={false}
@@ -111,8 +95,6 @@ describe('CouncilInsights', () => {
 
     expect(screen.getByText('Consensus Matrix')).toBeInTheDocument();
     expect(screen.getByText('Influence Graph')).toBeInTheDocument();
-    expect(screen.getByText('Final Answer Traceability')).toBeInTheDocument();
-    expect(screen.getByText('Side-by-Side Diff')).toBeInTheDocument();
     expect(screen.getByText('Uncertainty Panel')).toBeInTheDocument();
     expect(screen.getByText('Cost & Latency Breakdown')).toBeInTheDocument();
     expect(screen.getByText('Interactive Rerun Controls')).toBeInTheDocument();
@@ -121,9 +103,6 @@ describe('CouncilInsights', () => {
     expect(screen.getByText('Stage 1: 1s')).toBeInTheDocument();
     expect(screen.getByText('Stage 2: 2s')).toBeInTheDocument();
     expect(screen.getByText('Stage 3: 3s')).toBeInTheDocument();
-
-    fireEvent.change(screen.getByLabelText('Left'), { target: { value: 'provider/model-b' } });
-    fireEvent.change(screen.getByLabelText('Right'), { target: { value: 'provider/model-c' } });
 
     fireEvent.click(screen.getByRole('checkbox', { name: 'model-a' }));
     fireEvent.change(screen.getByDisplayValue('provider/model-b'), { target: { value: 'provider/model-c' } });
@@ -148,7 +127,6 @@ describe('CouncilInsights', () => {
     render(
       <CouncilInsights
         assistantMessage={buildAssistantMessage()}
-        userMessage={userMessage}
         assistantIndex={1}
         onRerunAssistant={onRerunAssistant}
         isBusy={false}
@@ -171,7 +149,6 @@ describe('CouncilInsights', () => {
     render(
       <CouncilInsights
         assistantMessage={buildAssistantMessage()}
-        userMessage={userMessage}
         assistantIndex={0}
         onRerunAssistant={vi.fn()}
         isBusy
@@ -184,7 +161,7 @@ describe('CouncilInsights', () => {
     expect(screen.getByRole('checkbox', { name: 'model-a' })).toBeDisabled();
   });
 
-  it('shows empty matrix and traceability states when inputs are sparse', () => {
+  it('shows empty matrix state when inputs are sparse', () => {
     const sparseAssistant: AssistantMessage = {
       role: 'assistant',
       stage1: [{ model: 'provider/model-a', response: 'Single answer only.' }],
@@ -196,7 +173,6 @@ describe('CouncilInsights', () => {
     render(
       <CouncilInsights
         assistantMessage={sparseAssistant}
-        userMessage={{ role: 'user', content: 'x', attachments: [] }}
         assistantIndex={3}
         onRerunAssistant={vi.fn()}
         isBusy={false}
@@ -204,7 +180,59 @@ describe('CouncilInsights', () => {
     );
 
     expect(screen.getByText('No ranking matrix available for this response.')).toBeInTheDocument();
-    expect(screen.getByText('No final paragraphs available for traceability mapping.')).toBeInTheDocument();
-    expect(screen.getByText('No explicit unresolved questions detected in final answer.')).toBeInTheDocument();
+  });
+
+  it('renders all panels correctly when a model fails in stage1', () => {
+    const msg: AssistantMessage = {
+      role: 'assistant',
+      stage1: [
+        { model: 'provider/model-a', response: 'Alpha answer.', usage: { prompt_tokens: 10, completion_tokens: 20, total_tokens: 30 }, latency_seconds: 1 },
+        { model: 'provider/model-b', response: 'Beta answer.', usage: { prompt_tokens: 11, completion_tokens: 21, total_tokens: 32 }, latency_seconds: 2 },
+      ],
+      stage2: [
+        { model: 'provider/model-a', ranking: 'eval', parsed_ranking: ['Response A', 'Response B'], latency_seconds: 3, usage: { prompt_tokens: 8, completion_tokens: 10, total_tokens: 18 } },
+        { model: 'provider/model-b', ranking: 'eval', parsed_ranking: ['Response B', 'Response A'], latency_seconds: 4, usage: { prompt_tokens: 9, completion_tokens: 11, total_tokens: 20 } },
+      ],
+      stage3: { model: 'provider/model-a', response: 'Final synthesis.', usage: { prompt_tokens: 7, completion_tokens: 13, total_tokens: 20 }, latency_seconds: 5 },
+      metadata: {
+        label_to_model: { 'Response A': 'provider/model-a', 'Response B': 'provider/model-b' },
+        aggregate_rankings: [
+          { model: 'provider/model-a', average_rank: 1.5, rankings_count: 2 },
+          { model: 'provider/model-b', average_rank: 1.5, rankings_count: 2 },
+        ],
+        failed_models: ['provider/model-c'],
+        timing: { stage1: 2, stage2: 4, stage3: 5 },
+      },
+    };
+
+    const { container } = render(
+      <CouncilInsights
+        assistantMessage={msg}
+        assistantIndex={0}
+        onRerunAssistant={vi.fn()}
+        isBusy={false}
+      />
+    );
+
+    // All panels render
+    expect(screen.getByText('Consensus Matrix')).toBeInTheDocument();
+    expect(screen.getByText('Influence Graph')).toBeInTheDocument();
+    expect(screen.getByText('Uncertainty Panel')).toBeInTheDocument();
+    expect(screen.getByText('Cost & Latency Breakdown')).toBeInTheDocument();
+
+    // Consensus matrix shows only 2 candidates (model-c failed, not shown)
+    const matrixTable = container.querySelector('.consensus-matrix');
+    expect(matrixTable).not.toBeNull();
+    const headers = matrixTable!.querySelectorAll('th');
+    // "Evaluator" + 2 candidate columns
+    expect(headers).toHaveLength(3);
+
+    // Failed model listed in cost breakdown
+    expect(screen.getByText('Failed models: model-c')).toBeInTheDocument();
+
+    // Rerun controls only show successful models
+    expect(screen.getByRole('checkbox', { name: 'model-a' })).toBeInTheDocument();
+    expect(screen.getByRole('checkbox', { name: 'model-b' })).toBeInTheDocument();
+    expect(screen.queryByRole('checkbox', { name: 'model-c' })).not.toBeInTheDocument();
   });
 });

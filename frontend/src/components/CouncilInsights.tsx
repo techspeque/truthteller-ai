@@ -2,14 +2,12 @@ import { useMemo, useState } from 'react';
 import {
   buildConsensusData,
   buildInfluenceData,
-  buildTraceabilityData,
-  buildDiffData,
   buildUncertaintyData,
   buildCostLatencyRows,
   formatNumber,
   modelLabel,
 } from '@/utils/insights';
-import type { AssistantMessage, UserMessage } from '@/types/api';
+import type { AssistantMessage } from '@/types/api';
 import './CouncilInsights.css';
 
 const EMPTY_ARRAY: never[] = [];
@@ -35,7 +33,6 @@ function graphModelLabel(model: string, maxLength = 22) {
 
 interface CouncilInsightsProps {
   assistantMessage: AssistantMessage;
-  userMessage: UserMessage | null;
   assistantIndex: number;
   onRerunAssistant: (assistantIndex: number, options: { stage: string; includeModels: string[]; chairmanModel: string }) => void;
   isBusy: boolean;
@@ -43,7 +40,6 @@ interface CouncilInsightsProps {
 
 export default function CouncilInsights({
   assistantMessage,
-  userMessage,
   assistantIndex,
   onRerunAssistant,
   isBusy,
@@ -52,17 +48,10 @@ export default function CouncilInsights({
   const stage2 = assistantMessage?.stage2 || EMPTY_ARRAY;
   const stage3 = assistantMessage?.stage3 || null;
   const metadata = assistantMessage?.metadata || EMPTY_OBJECT;
-  const userAttachments = userMessage?.attachments || EMPTY_ARRAY;
-
   const modelOptions = useMemo(() => stage1.map((entry) => entry.model), [stage1]);
 
-  const [leftModel, setLeftModel] = useState(() => modelOptions[0] || '');
-  const [rightModel, setRightModel] = useState(() => modelOptions[1] || modelOptions[0] || '');
   const [selectedModels, setSelectedModels] = useState(() => modelOptions);
   const [chairmanModel, setChairmanModel] = useState(() => stage3?.model || modelOptions[0] || '');
-  const effectiveLeftModel = modelOptions.includes(leftModel) ? leftModel : (modelOptions[0] || '');
-  const fallbackRight = modelOptions[1] || modelOptions[0] || '';
-  const effectiveRightModel = modelOptions.includes(rightModel) ? rightModel : fallbackRight;
   const filteredSelectedModels = selectedModels.filter((model) => modelOptions.includes(model));
   const effectiveSelectedModels = filteredSelectedModels.length > 0 ? filteredSelectedModels : modelOptions;
   const effectiveChairmanModel = modelOptions.includes(chairmanModel)
@@ -76,14 +65,6 @@ export default function CouncilInsights({
   const influenceData = useMemo(
     () => buildInfluenceData(stage1, stage2, stage3, metadata, consensusData),
     [stage1, stage2, stage3, metadata, consensusData]
-  );
-  const traceability = useMemo(
-    () => buildTraceabilityData(stage1, stage3, userAttachments),
-    [stage1, stage3, userAttachments]
-  );
-  const diffData = useMemo(
-    () => buildDiffData(stage1, effectiveLeftModel, effectiveRightModel),
-    [stage1, effectiveLeftModel, effectiveRightModel]
   );
   const uncertainty = useMemo(
     () => buildUncertaintyData(stage1, stage2, stage3, metadata, consensusData),
@@ -255,99 +236,6 @@ export default function CouncilInsights({
 
       <div className="insight-card">
         <div className="insight-header">
-          <h4>Final Answer Traceability</h4>
-          <span className="insight-muted">Paragraph-level source support</span>
-        </div>
-        {traceability.length === 0 ? (
-          <p className="insight-empty">No final paragraphs available for traceability mapping.</p>
-        ) : (
-          <div className="trace-list">
-            {traceability.map((entry) => (
-              <details key={entry.id} className="trace-item" open={entry.id === 1}>
-                <summary>
-                  Paragraph {entry.id}
-                  <span className="trace-chip-row">
-                    {entry.modelSupport.map((support) => (
-                      <span key={`${entry.id}-${support.model}`} className="trace-chip model">
-                        {modelLabel(support.model)} ({Math.round(support.score * 100)}%)
-                      </span>
-                    ))}
-                    {entry.fileSupport.map((support) => (
-                      <span key={`${entry.id}-${support.filename}`} className="trace-chip file">
-                        {support.filename}
-                      </span>
-                    ))}
-                  </span>
-                </summary>
-                <p>{entry.text}</p>
-                {(entry.modelSupport.length > 0 || entry.fileSupport.length > 0) && (
-                  <div className="trace-sources">
-                    {entry.modelSupport.map((support) => (
-                      <div key={`model-source-${entry.id}-${support.model}`} className="trace-source">
-                        <strong>{modelLabel(support.model)}</strong>: {support.snippet}
-                      </div>
-                    ))}
-                    {entry.fileSupport.map((support) => (
-                      <div key={`file-source-${entry.id}-${support.filename}`} className="trace-source">
-                        <strong>{support.filename}</strong>: {support.snippet || 'Referenced in paragraph'}
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </details>
-            ))}
-          </div>
-        )}
-      </div>
-
-      <div className="insight-card">
-        <div className="insight-header">
-          <h4>Side-by-Side Diff</h4>
-          <span className="insight-muted">Highlighting disagreement between model outputs</span>
-        </div>
-
-        <div className="diff-controls">
-          <label>
-            Left
-            <select value={effectiveLeftModel} onChange={(e) => setLeftModel(e.target.value)}>
-              {modelOptions.map((model) => (
-                <option key={`left-${model}`} value={model}>{modelLabel(model)}</option>
-              ))}
-            </select>
-          </label>
-          <label>
-            Right
-            <select value={effectiveRightModel} onChange={(e) => setRightModel(e.target.value)}>
-              {modelOptions.map((model) => (
-                <option key={`right-${model}`} value={model}>{modelLabel(model)}</option>
-              ))}
-            </select>
-          </label>
-          <div className="diff-shared">Shared claims: {diffData.shared.length}</div>
-        </div>
-
-        <div className="diff-grid">
-          <div>
-            <h5>{modelLabel(effectiveLeftModel)} unique claims</h5>
-            <ul>
-              {diffData.leftOnly.slice(0, 8).map((sentence, idx) => (
-                <li key={`left-only-${idx}`}>{sentence}</li>
-              ))}
-            </ul>
-          </div>
-          <div>
-            <h5>{modelLabel(effectiveRightModel)} unique claims</h5>
-            <ul>
-              {diffData.rightOnly.slice(0, 8).map((sentence, idx) => (
-                <li key={`right-only-${idx}`}>{sentence}</li>
-              ))}
-            </ul>
-          </div>
-        </div>
-      </div>
-
-      <div className="insight-card">
-        <div className="insight-header">
           <h4>Uncertainty Panel</h4>
           <span className="insight-pill">Confidence {uncertainty.confidenceScore}%</span>
         </div>
@@ -358,29 +246,6 @@ export default function CouncilInsights({
           <div><strong>{uncertainty.successRate}%</strong><span>Model success rate</span></div>
         </div>
 
-        <h5>Disagreement Hotspots</h5>
-        <div className="hotspot-row">
-          {uncertainty.hotspots.length === 0 ? (
-            <span className="insight-empty">No strong hotspots detected.</span>
-          ) : (
-            uncertainty.hotspots.map((hotspot) => (
-              <span key={hotspot.token} className="hotspot-chip">
-                {hotspot.token}
-              </span>
-            ))
-          )}
-        </div>
-
-        <h5>Open Questions</h5>
-        {uncertainty.openQuestions.length === 0 ? (
-          <p className="insight-empty">No explicit unresolved questions detected in final answer.</p>
-        ) : (
-          <ul className="open-question-list">
-            {uncertainty.openQuestions.map((question, index) => (
-              <li key={`open-q-${index}`}>{question}</li>
-            ))}
-          </ul>
-        )}
       </div>
 
       <div className="insight-card">

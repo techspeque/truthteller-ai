@@ -25,7 +25,7 @@ function App() {
   const [error, setError] = useState<string | null>(null);
   const [backendOk, setBackendOk] = useState<boolean | null>(null);
   const [showSettings, setShowSettings] = useState(false);
-  const [insightsExpandedDefault, setInsightsExpandedDefault] = useState(false);
+
   const [theme, setTheme] = useState<Theme>(() => {
     if (typeof window === 'undefined') return 'light';
     const stored = localStorage.getItem('t2ai-theme');
@@ -53,9 +53,6 @@ function App() {
       .then((convs) => setConversations(convs))
       .catch((err: Error) => log.error('Failed to load conversations', { error: err.message }));
 
-    api.getConfig()
-      .then((cfg) => setInsightsExpandedDefault(Boolean(cfg.insights_expanded_default)))
-      .catch((err: Error) => log.warn('Failed to load config defaults', { error: err.message }));
   }, []);
 
   useEffect(() => {
@@ -409,7 +406,6 @@ function App() {
   };
 
   const handleSettingsSaved = (updatedConfig: AppConfigResponse) => {
-    setInsightsExpandedDefault(Boolean(updatedConfig?.insights_expanded_default));
     const nextTheme = updatedConfig?.theme;
     if (nextTheme === 'dark' || nextTheme === 'light') {
       setTheme(nextTheme);
@@ -444,7 +440,6 @@ function App() {
         backendOk={backendOk}
         onExport={handleExportMarkdown}
         onRerunAssistant={handleRerunAssistant}
-        insightsExpandedDefault={insightsExpandedDefault}
       />
       {showSettings && (
         <Settings

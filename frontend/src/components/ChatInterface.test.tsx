@@ -43,6 +43,12 @@ describe('ChatInterface', () => {
       configurable: true,
       value: vi.fn(),
     });
+    HTMLDialogElement.prototype.showModal = vi.fn(function (this: HTMLDialogElement) {
+      this.setAttribute('open', '');
+    });
+    HTMLDialogElement.prototype.close = vi.fn(function (this: HTMLDialogElement) {
+      this.removeAttribute('open');
+    });
   });
 
   it('shows welcome state when no conversation and backend is down', () => {
@@ -160,7 +166,7 @@ describe('ChatInterface', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Dismiss' }));
     expect(onDismissError).toHaveBeenCalledTimes(1);
 
-    fireEvent.click(screen.getByRole('button', { name: /Show Council Insights/ }));
+    fireEvent.click(screen.getByRole('button', { name: /Council Insights/ }));
     expect(screen.getByTestId('insights-panel')).toHaveTextContent('insights-1');
     fireEvent.click(screen.getByRole('button', { name: 'rerun-from-insights' }));
     expect(onRerunAssistant).toHaveBeenCalledWith(1, { stage: 'stage2' });
@@ -170,26 +176,4 @@ describe('ChatInterface', () => {
     expect(screen.getByRole('button', { name: 'Send' })).toBeDisabled();
   });
 
-  it('respects default-expanded insights setting', () => {
-    render(
-      <ChatInterface
-        conversation={baseConversation([
-          { role: 'user', content: 'q', attachments: [] },
-          { role: 'assistant', stage3: { model: 'provider/chair', response: 'final' } },
-        ])}
-        onSendMessage={vi.fn()}
-        isLoading={false}
-        isUploadProcessing={false}
-        error={null}
-        onDismissError={vi.fn()}
-        backendOk={true}
-        onExport={vi.fn()}
-        onRerunAssistant={vi.fn()}
-        insightsExpandedDefault
-      />
-    );
-
-    expect(screen.getByRole('button', { name: /Hide Council Insights/ })).toBeInTheDocument();
-    expect(screen.getByTestId('insights-panel')).toBeInTheDocument();
-  });
 });

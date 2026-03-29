@@ -9,7 +9,7 @@ use tracing::{info, warn};
 
 use crate::errors::CouncilError;
 use crate::openrouter::{
-    query_model, query_model_with_options, query_models_parallel_with_options,
+    query_model_with_options, query_models_parallel_with_options,
     query_models_parallel_with_options_detailed, ChatMessage, ModelResponse, QueryOptions,
 };
 use crate::types::{
@@ -495,6 +495,31 @@ pub async fn generate_conversation_title(
     api_key: &str,
     user_query: &str,
 ) -> String {
+    generate_conversation_title_with_options(client, api_key, user_query, QueryOptions::default())
+        .await
+}
+
+pub async fn generate_conversation_title_with_config(
+    client: &Client,
+    api_key: &str,
+    user_query: &str,
+    config: &AppConfig,
+) -> String {
+    generate_conversation_title_with_options(
+        client,
+        api_key,
+        user_query,
+        query_options_from_config(config),
+    )
+    .await
+}
+
+async fn generate_conversation_title_with_options(
+    client: &Client,
+    api_key: &str,
+    user_query: &str,
+    options: QueryOptions,
+) -> String {
     let title_prompt = format!(
         r#"Generate a very short title (3-5 words maximum) that summarizes the following question.
 The title should be concise and descriptive. Do not use quotes or punctuation in the title.
@@ -510,7 +535,14 @@ Title:"#
     }];
 
     // Use gemini-2.5-flash for title generation (fast and cheap)
-    let response = query_model(client, api_key, "google/gemini-2.5-flash", &messages, 30).await;
+    let response = query_model_with_options(
+        client,
+        api_key,
+        "google/gemini-2.5-flash",
+        &messages,
+        options,
+    )
+    .await;
 
     match response {
         Some(r) => {
