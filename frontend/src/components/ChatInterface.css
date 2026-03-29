@@ -189,8 +189,8 @@
 
 .stage-loading {
   display: flex;
-  align-items: center;
-  gap: 12px;
+  flex-direction: column;
+  gap: 4px;
   padding: 16px;
   margin: 12px 0;
   background: var(--bg-subtle);
@@ -199,6 +199,12 @@
   color: var(--text-secondary);
   font-size: 14px;
   font-style: italic;
+}
+
+.stage-loading-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
 }
 
 .insights-section {

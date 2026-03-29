@@ -19,6 +19,7 @@ export interface UploadProcessingCompleteEvent {
 
 export interface Stage1StartEvent {
   type: 'stage1_start';
+  models?: string[];
 }
 
 export interface Stage1CompleteEvent {
@@ -31,6 +32,7 @@ export interface Stage1CompleteEvent {
 
 export interface Stage2StartEvent {
   type: 'stage2_start';
+  models?: string[];
 }
 
 export interface Stage2CompleteEvent {
@@ -42,6 +44,7 @@ export interface Stage2CompleteEvent {
 
 export interface Stage3StartEvent {
   type: 'stage3_start';
+  models?: string[];
 }
 
 export interface Stage3CompleteEvent {

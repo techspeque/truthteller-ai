@@ -69,6 +69,14 @@ export interface UserMessage {
   attachments: AttachmentMetadata[];
 }
 
+export type ModelStatus = 'waiting' | 'success' | 'failed';
+
+export interface ModelStatusEntry {
+  model: string;
+  status: ModelStatus;
+  error?: string;
+}
+
 export interface AssistantMessage {
   role: 'assistant';
   stage1?: StageResult[] | null;
@@ -80,6 +88,7 @@ export interface AssistantMessage {
   timing?: Partial<StageTiming>;
   failedModels?: string[];
   failedModelErrors?: Record<string, string>;
+  modelStatuses?: ModelStatusEntry[];
 }
 
 export interface StageLoading {

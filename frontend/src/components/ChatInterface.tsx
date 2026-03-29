@@ -4,6 +4,7 @@ import Stage1 from './Stage1';
 import Stage2 from './Stage2';
 import Stage3 from './Stage3';
 import CouncilInsights from './CouncilInsights';
+import ModelStatusBadges from './ModelStatusBadges';
 import type { Conversation, Message, AssistantMessage, UserMessage } from '@/types/api';
 import './ChatInterface.css';
 
@@ -227,8 +228,13 @@ export default function ChatInterface({
 
                   {msg.loading?.stage1 && (
                     <div className="stage-loading">
-                      <div className="spinner"></div>
-                      <span>Running Stage 1: Collecting individual responses...</span>
+                      <div className="stage-loading-header">
+                        <div className="spinner"></div>
+                        <span>Stage 1: Collecting individual responses...</span>
+                      </div>
+                      {msg.modelStatuses && msg.modelStatuses.length > 0 && (
+                        <ModelStatusBadges statuses={msg.modelStatuses} />
+                      )}
                     </div>
                   )}
                   {msg.stage1 && (
@@ -241,8 +247,13 @@ export default function ChatInterface({
 
                   {msg.loading?.stage2 && (
                     <div className="stage-loading">
-                      <div className="spinner"></div>
-                      <span>Running Stage 2: Peer rankings...</span>
+                      <div className="stage-loading-header">
+                        <div className="spinner"></div>
+                        <span>Stage 2: Peer rankings...</span>
+                      </div>
+                      {msg.modelStatuses && msg.modelStatuses.length > 0 && (
+                        <ModelStatusBadges statuses={msg.modelStatuses} />
+                      )}
                     </div>
                   )}
                   {msg.stage2 && (
@@ -255,8 +266,13 @@ export default function ChatInterface({
 
                   {msg.loading?.stage3 && (
                     <div className="stage-loading">
-                      <div className="spinner"></div>
-                      <span>Running Stage 3: Final synthesis...</span>
+                      <div className="stage-loading-header">
+                        <div className="spinner"></div>
+                        <span>Stage 3: Final synthesis...</span>
+                      </div>
+                      {msg.modelStatuses && msg.modelStatuses.length > 0 && (
+                        <ModelStatusBadges statuses={msg.modelStatuses} />
+                      )}
                     </div>
                   )}
                   {msg.stage3 && <Stage3 finalResponse={msg.stage3} />}

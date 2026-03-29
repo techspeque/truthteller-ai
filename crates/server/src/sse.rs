@@ -137,7 +137,7 @@ pub async fn send_message_stream(
         };
 
         // Stage 1
-        events.push(sse_event(serde_json::json!({"type": "stage1_start"})));
+        events.push(sse_event(serde_json::json!({"type": "stage1_start", "models": &cfg.council_models})));
 
         let s1 = stage1_collect_responses_with_config(
             state.http_client(),
@@ -165,7 +165,7 @@ pub async fn send_message_stream(
         }
 
         // Stage 2
-        events.push(sse_event(serde_json::json!({"type": "stage2_start"})));
+        events.push(sse_event(serde_json::json!({"type": "stage2_start", "models": &cfg.council_models})));
 
         let (stage2_results, label_to_model, aggregate_rankings, stage2_time) = if cfg
             .stage2_enabled
@@ -224,14 +224,14 @@ pub async fn send_message_stream(
         };
 
         // Stage 3
-        events.push(sse_event(serde_json::json!({"type": "stage3_start"})));
-
         let chairman_model = cfg
             .stage3_model_override
             .as_deref()
             .map(str::trim)
             .filter(|value| !value.is_empty())
             .unwrap_or(&cfg.chairman_model);
+
+        events.push(sse_event(serde_json::json!({"type": "stage3_start", "models": [chairman_model]})));
 
         let s3 = stage3_synthesize_final_with_config(
             state.http_client(),
@@ -355,7 +355,7 @@ pub async fn send_message_stream_json(
         };
 
         // Stage 1
-        events.push(sse_event(serde_json::json!({"type": "stage1_start"})));
+        events.push(sse_event(serde_json::json!({"type": "stage1_start", "models": &cfg.council_models})));
         let s1 = stage1_collect_responses_with_config(
             state.http_client(),
             &api_key,
@@ -381,7 +381,7 @@ pub async fn send_message_stream_json(
         }
 
         // Stage 2
-        events.push(sse_event(serde_json::json!({"type": "stage2_start"})));
+        events.push(sse_event(serde_json::json!({"type": "stage2_start", "models": &cfg.council_models})));
         let (stage2_results, label_to_model, aggregate_rankings, stage2_time) = if cfg
             .stage2_enabled
         {
@@ -439,13 +439,14 @@ pub async fn send_message_stream_json(
         };
 
         // Stage 3
-        events.push(sse_event(serde_json::json!({"type": "stage3_start"})));
         let chairman_model = cfg
             .stage3_model_override
             .as_deref()
             .map(str::trim)
             .filter(|value| !value.is_empty())
             .unwrap_or(&cfg.chairman_model);
+
+        events.push(sse_event(serde_json::json!({"type": "stage3_start", "models": [chairman_model]})));
 
         let s3 = stage3_synthesize_final_with_config(
             state.http_client(),

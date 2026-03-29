@@ -180,7 +180,12 @@ function App() {
               const messages = [...prev.messages];
               const lastMsg = messages[messages.length - 1];
               if (!lastMsg || lastMsg.role !== 'assistant') return prev;
-              messages[messages.length - 1] = { ...lastMsg, loading: { ...lastMsg.loading!, stage1: true } };
+              const models = (event.type === 'stage1_start' && event.models) || [];
+              messages[messages.length - 1] = {
+                ...lastMsg,
+                loading: { ...lastMsg.loading!, stage1: true },
+                modelStatuses: models.map((m) => ({ model: m, status: 'waiting' as const })),
+              };
               return { ...prev, messages };
             });
             break;
@@ -192,6 +197,13 @@ function App() {
               const lastMsg = messages[messages.length - 1];
               if (!lastMsg || lastMsg.role !== 'assistant') return prev;
               if (event.type !== 'stage1_complete') return prev;
+              const succeeded = new Set((event.data || []).map((r) => r.model));
+              const failedErrors = event.failed_model_errors || {};
+              const statuses = (lastMsg.modelStatuses || []).map((entry) => {
+                if (succeeded.has(entry.model)) return { ...entry, status: 'success' as const };
+                if ((event.failed_models || []).includes(entry.model)) return { ...entry, status: 'failed' as const, error: failedErrors[entry.model] };
+                return { ...entry, status: 'success' as const };
+              });
               messages[messages.length - 1] = {
                 ...lastMsg,
                 stage1: event.data,
@@ -199,6 +211,7 @@ function App() {
                 timing: { ...lastMsg.timing, stage1: event.timing },
                 failedModels: event.failed_models || [],
                 failedModelErrors: event.failed_model_errors || {},
+                modelStatuses: statuses,
               };
               return { ...prev, messages };
             });
@@ -210,7 +223,12 @@ function App() {
               const messages = [...prev.messages];
               const lastMsg = messages[messages.length - 1];
               if (!lastMsg || lastMsg.role !== 'assistant') return prev;
-              messages[messages.length - 1] = { ...lastMsg, loading: { ...lastMsg.loading!, stage2: true } };
+              const models = (event.type === 'stage2_start' && event.models) || [];
+              messages[messages.length - 1] = {
+                ...lastMsg,
+                loading: { ...lastMsg.loading!, stage2: true },
+                modelStatuses: models.map((m) => ({ model: m, status: 'waiting' as const })),
+              };
               return { ...prev, messages };
             });
             break;
@@ -222,12 +240,19 @@ function App() {
               const lastMsg = messages[messages.length - 1];
               if (!lastMsg || lastMsg.role !== 'assistant') return prev;
               if (event.type !== 'stage2_complete') return prev;
+              const succeeded = new Set((event.data || []).map((r) => r.model));
+              const statuses = (lastMsg.modelStatuses || []).map((entry) =>
+                succeeded.has(entry.model)
+                  ? { ...entry, status: 'success' as const }
+                  : { ...entry, status: 'failed' as const }
+              );
               messages[messages.length - 1] = {
                 ...lastMsg,
                 stage2: event.data,
                 metadata: event.metadata || null,
                 loading: { ...lastMsg.loading!, stage2: false },
                 timing: { ...lastMsg.timing, stage2: event.timing },
+                modelStatuses: statuses,
               };
               return { ...prev, messages };
             });
@@ -239,7 +264,12 @@ function App() {
               const messages = [...prev.messages];
               const lastMsg = messages[messages.length - 1];
               if (!lastMsg || lastMsg.role !== 'assistant') return prev;
-              messages[messages.length - 1] = { ...lastMsg, loading: { ...lastMsg.loading!, stage3: true } };
+              const models = (event.type === 'stage3_start' && event.models) || [];
+              messages[messages.length - 1] = {
+                ...lastMsg,
+                loading: { ...lastMsg.loading!, stage3: true },
+                modelStatuses: models.map((m) => ({ model: m, status: 'waiting' as const })),
+              };
               return { ...prev, messages };
             });
             break;
@@ -256,6 +286,7 @@ function App() {
                 stage3: event.data,
                 loading: { ...lastMsg.loading!, stage3: false },
                 timing: { ...lastMsg.timing, stage3: event.timing },
+                modelStatuses: (lastMsg.modelStatuses || []).map((entry) => ({ ...entry, status: 'success' as const })),
               };
               return { ...prev, messages };
             });
