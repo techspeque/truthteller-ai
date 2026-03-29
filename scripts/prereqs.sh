@@ -4,6 +4,7 @@
 # Usage:
 #   ./scripts/prereqs.sh
 #   ./scripts/prereqs.sh --platform macos --target aarch64-apple-darwin --ensure-tauri-cli
+#   ./scripts/prereqs.sh --platform windows --ensure-tauri-cli
 
 set -euo pipefail
 
@@ -20,6 +21,7 @@ detect_platform() {
   case "$(uname -s)" in
     Darwin) echo "macos" ;;
     Linux) echo "linux" ;;
+    MINGW*|MSYS*|CYGWIN*) echo "windows" ;;
     *) echo "unknown" ;;
   esac
 }
@@ -41,7 +43,7 @@ print_usage() {
 Install/verify prerequisites for TruthTeller AI scripts.
 
 Options:
-  --platform <macos|linux>     Explicit platform (default: detect from host)
+  --platform <macos|linux|windows>  Explicit platform (default: detect from host)
   --target <triple>            Add a Rust target (for cross-arch builds)
   --ensure-tauri-cli           Install Tauri CLI if missing
   --force-frontend-install     Install frontend deps even if node_modules exists
@@ -103,10 +105,10 @@ if [[ -z "${PLATFORM}" ]]; then
 fi
 
 case "${PLATFORM}" in
-  macos|linux)
+  macos|linux|windows)
     ;;
   *)
-    echo "Error: unsupported platform '${PLATFORM}'. Use 'macos' or 'linux'." >&2
+    echo "Error: unsupported platform '${PLATFORM}'. Use 'macos', 'linux', or 'windows'." >&2
     exit 1
     ;;
 esac

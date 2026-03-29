@@ -15,7 +15,7 @@ Stop Condition: If any check (Lint, Test, Clippy, or Version Check) fails, abort
     Major ($x.0.0$): Breaking changes or incompatible API updates.
     Minor ($0.x.0$): New features (backwards compatible).
     Patch ($0.0.x$): Bug fixes or internal refactors.
-3. Execute Bump: Run the versioning script to update `VERSION`, `Cargo.toml` (workspace), `tauri.conf.json`, and `package.json`: ./scripts/version.sh set <NEW_VERSION_NUMBER>
+3. Execute Bump: Run the versioning script to update `VERSION`, the shipped crate manifests, `tauri.conf.json`, and `package.json`: ./scripts/version.sh set <NEW_VERSION_NUMBER>
 4.Validate Bump: Run `./scripts/version.sh check` to confirm synchronization.
 
 ## Phase 3: Documentation & Artifacts
@@ -30,8 +30,9 @@ Stop Condition: If any check (Lint, Test, Clippy, or Version Check) fails, abort
 
 ## Phase 4: Release Workflow Expectations
 
-1. Release Body Link: Ensure the GitHub release page will be able to link to the new versioned doc in `docs/releases/`.
-2. Platform Coverage: Release automation is expected to publish artifacts for macOS, Linux, and Windows. If release-related changes remove or add platform support, update the workflows and docs in the same change.
+1. Release Body Link: Ensure the GitHub release page will be rendered from `.github/release-body.md` and will link to the new versioned doc in `docs/releases/`.
+2. Release Metadata Check: CI must verify the tagged release has a matching `docs/releases/v<NEW_VERSION>.md` file before starting platform builds.
+3. Platform Coverage: Release automation is expected to publish artifacts for macOS, Linux, and Windows. If release-related changes remove or add platform support, update the workflows and docs in the same change.
 
 ## Phase 5: Git Execution Commands
 

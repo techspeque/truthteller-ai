@@ -93,24 +93,6 @@ export default function ChatInterface({
     return -1;
   })();
 
-  if (!conversation) {
-    return (
-      <div className="chat-interface">
-        {backendOk === false && (
-          <div className="error-banner backend-error">
-            Backend unavailable. Make sure the server is running on port 8001.
-          </div>
-        )}
-        <div className="empty-state">
-          <h2>Welcome to TruthTeller AI</h2>
-          <p>Create a new conversation to get started</p>
-        </div>
-      </div>
-    );
-  }
-
-  const getTiming = (message: AssistantMessage) => message.timing || message.metadata?.timing || null;
-
   const openInsightsDialog = useCallback((index: number) => {
     setInsightsDialogIndex(index);
   }, []);
@@ -136,6 +118,24 @@ export default function ChatInterface({
     dialog.addEventListener('close', handleClose);
     return () => dialog.removeEventListener('close', handleClose);
   }, []);
+
+  if (!conversation) {
+    return (
+      <div className="chat-interface">
+        {backendOk === false && (
+          <div className="error-banner backend-error">
+            Backend unavailable. Make sure the server is running on port 8001.
+          </div>
+        )}
+        <div className="empty-state">
+          <h2>Welcome to TruthTeller AI</h2>
+          <p>Create a new conversation to get started</p>
+        </div>
+      </div>
+    );
+  }
+
+  const getTiming = (message: AssistantMessage) => message.timing || message.metadata?.timing || null;
 
   return (
     <div className="chat-interface">

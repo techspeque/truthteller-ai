@@ -4,6 +4,7 @@
 # Usage:
 #   ./scripts/release.sh --platform macos
 #   ./scripts/release.sh --platform linux
+#   ./scripts/release.sh --platform windows
 #   ./scripts/release.sh --platform macos --skip-checks --skip-tests
 #   ./scripts/release.sh --platform macos --target aarch64-apple-darwin
 
@@ -23,6 +24,7 @@ detect_platform() {
   case "$(uname -s)" in
     Darwin) echo "macos" ;;
     Linux) echo "linux" ;;
+    MINGW*|MSYS*|CYGWIN*) echo "windows" ;;
     *) echo "unknown" ;;
   esac
 }
@@ -32,7 +34,7 @@ print_usage() {
 Build a release for TruthTeller AI.
 
 Options:
-  --platform <macos|linux>  Target platform (default: detect from host)
+  --platform <macos|linux|windows>  Target platform (default: detect from host)
   --skip-prereqs            Skip automatic prerequisites/install step
   --skip-checks             Skip format/clippy/frontend lint checks
   --skip-tests              Skip Rust workspace tests
@@ -99,10 +101,10 @@ if [[ -z "${PLATFORM}" ]]; then
 fi
 
 case "${PLATFORM}" in
-  macos|linux)
+  macos|linux|windows)
     ;;
   *)
-    echo "Error: unsupported platform '${PLATFORM}'. Use 'macos' or 'linux'." >&2
+    echo "Error: unsupported platform '${PLATFORM}'. Use 'macos', 'linux', or 'windows'." >&2
     exit 1
     ;;
 esac
@@ -158,6 +160,9 @@ if [[ "${RUN_CHECKS}" -eq 1 ]]; then
 
   echo "=== Frontend lint ==="
   npm run lint --prefix frontend
+
+  echo "=== Frontend typecheck ==="
+  npm run typecheck --prefix frontend
 fi
 
 if [[ "${RUN_TESTS}" -eq 1 ]]; then
@@ -172,6 +177,9 @@ case "${PLATFORM}" in
     ;;
   linux)
     BUNDLE_TARGETS="deb,appimage"
+    ;;
+  windows)
+    BUNDLE_TARGETS="msi,nsis"
     ;;
 esac
 
@@ -210,8 +218,10 @@ echo "Found artifacts:"
 if [[ -n "${FOUND_BUNDLE_DIR}" ]]; then
   if [[ "${PLATFORM}" == "macos" ]]; then
     find "${FOUND_BUNDLE_DIR}" \( -name "*.dmg" -o -name "*.app" -o -name "*.app.tar.gz" \) | sed 's#^#  - #'
-  else
+  elif [[ "${PLATFORM}" == "linux" ]]; then
     find "${FOUND_BUNDLE_DIR}" \( -name "*.AppImage" -o -name "*.appimage" -o -name "*.deb" -o -name "*.tar.gz" \) | sed 's#^#  - #'
+  else
+    find "${FOUND_BUNDLE_DIR}" \( -name "*.msi" -o -name "*-setup.exe" \) | sed 's#^#  - #'
   fi
 else
   echo "  - (bundle directory not found)"

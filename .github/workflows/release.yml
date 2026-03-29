@@ -4,7 +4,6 @@ on:
   push:
     tags:
       - "v*.*.*"
-  workflow_dispatch:
 
 permissions:
   contents: write
@@ -39,6 +38,10 @@ jobs:
       - name: Verify tag/version alignment
         if: startsWith(github.ref, 'refs/tags/v')
         run: ./scripts/version.sh check --expect-tag "${GITHUB_REF_NAME}"
+
+      - name: Verify release metadata
+        if: startsWith(github.ref, 'refs/tags/v')
+        run: ./scripts/release-metadata.sh check --tag "${GITHUB_REF_NAME}"
 
       - name: Build release
         run: ./scripts/release.sh --platform macos --skip-prereqs
@@ -99,6 +102,10 @@ jobs:
         if: startsWith(github.ref, 'refs/tags/v')
         run: ./scripts/version.sh check --expect-tag "${GITHUB_REF_NAME}"
 
+      - name: Verify release metadata
+        if: startsWith(github.ref, 'refs/tags/v')
+        run: ./scripts/release-metadata.sh check --tag "${GITHUB_REF_NAME}"
+
       - name: Build release
         run: ./scripts/release.sh --platform linux --skip-prereqs
 
@@ -113,6 +120,61 @@ jobs:
             backend/target/release/bundle/**/*.deb
             backend/target/release/bundle/**/*.AppImage
 
+  release-windows:
+    runs-on: windows-2022
+    timeout-minutes: 90
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install Windows system dependencies
+        run: choco install nsis wixtoolset --no-progress -y
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
+
+      - name: Rust cache
+        uses: Swatinem/rust-cache@v2
+
+      - name: Install prerequisites
+        shell: bash
+        run: ./scripts/prereqs.sh --platform windows --ensure-tauri-cli --npm-ci
+
+      - name: Verify tag/version alignment
+        if: startsWith(github.ref, 'refs/tags/v')
+        shell: bash
+        run: ./scripts/version.sh check --expect-tag "${GITHUB_REF_NAME}"
+
+      - name: Verify release metadata
+        if: startsWith(github.ref, 'refs/tags/v')
+        shell: bash
+        run: ./scripts/release-metadata.sh check --tag "${GITHUB_REF_NAME}"
+
+      - name: Build release
+        shell: bash
+        run: ./scripts/release.sh --platform windows --skip-prereqs
+
+      - name: Upload release artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: t2ai-windows-bundle
+          if-no-files-found: error
+          path: |
+            target/release/bundle/**/*.msi
+            target/release/bundle/**/*-setup.exe
+            backend/target/release/bundle/**/*.msi
+            backend/target/release/bundle/**/*-setup.exe
+
   publish-release:
     if: startsWith(github.ref, 'refs/tags/v')
     runs-on: ubuntu-22.04
@@ -120,8 +182,12 @@ jobs:
     needs:
       - release-macos
       - release-ubuntu
+      - release-windows
 
     steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
       - name: Download macOS artifacts
         uses: actions/download-artifact@v4
         with:
@@ -134,12 +200,23 @@ jobs:
           name: t2ai-ubuntu-bundle
           path: dist/ubuntu
 
+      - name: Download Windows artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: t2ai-windows-bundle
+          path: dist/windows
+
+      - name: Render release body
+        run: ./scripts/release-metadata.sh render-body --tag "${GITHUB_REF_NAME}" --repo "${GITHUB_REPOSITORY}" --output dist/release-body.md
+
       - name: Publish GitHub release
         uses: softprops/action-gh-release@v2
         with:
-          generate_release_notes: true
+          body_path: dist/release-body.md
           files: |
             dist/macos/**/*.dmg
             dist/macos/**/*.app.tar.gz
             dist/ubuntu/**/*.deb
             dist/ubuntu/**/*.AppImage
+            dist/windows/**/*.msi
+            dist/windows/**/*-setup.exe

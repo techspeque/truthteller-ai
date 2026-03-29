@@ -10,7 +10,7 @@ Instead of asking one model, you ask a council of models:
 2. Stage 2: models evaluate and rank anonymized Stage 1 responses.
 3. Stage 3: a chairman model synthesizes a final answer.
 
-The app supports multi-turn conversations, multi-file uploads, streaming updates, and advanced post-run analysis of council outputs. It runs as a web app (Rust backend + browser) or as a native macOS app (Tauri).
+The app supports multi-turn conversations, multi-file uploads, streaming updates, and advanced post-run analysis of council outputs. It runs as a web app (Rust backend + browser) or as a native desktop app (Tauri).
 
 ## Features
 
@@ -29,7 +29,7 @@ The app supports multi-turn conversations, multi-file uploads, streaming updates
 ##  Roadmap
 
 - Add LiteLLM support
-- Support for Microsoft Windows installations
+- Add release asset auto-update support
 - Enable overrides for local data stores
 
 ## Architecture
@@ -50,7 +50,7 @@ Both adapters link the same `t2ai-core` crate. The frontend auto-detects the run
 - Runtime model config: `{data_dir}/config.json`
 - Stored secrets (current implementation for web + native): `{data_dir}/secrets.json`
 
-In web mode `data_dir` defaults to `./data`. In native mode it uses the macOS Application Support directory.
+In web mode `data_dir` defaults to `./data`. In native mode it uses the platform-specific application data directory.
 
 ## Requirements
 
@@ -156,7 +156,7 @@ npm run dev --prefix frontend
 
 Open [http://localhost:3000](http://localhost:3000). Backend runs on port 8001.
 
-### Native mode (macOS)
+### Native mode
 
 ```bash
 cargo tauri dev
@@ -174,12 +174,14 @@ Produces platform-appropriate native bundles in `target/release/bundle/`.
 
 - macOS: `.app` bundle and `.dmg` installer
 - Linux: `.deb` package and `.AppImage` bundle
+- Windows: `.msi` installer and NSIS `-setup.exe` bundle
 
 ### Build release with prereq auto-install
 
 ```bash
 ./scripts/release.sh --platform macos
 ./scripts/release.sh --platform linux
+./scripts/release.sh --platform windows
 ```
 
 This script:
@@ -301,17 +303,23 @@ GitHub Actions workflows are included in `.github/workflows/`:
 - `ci.yml` (push to `main` and pull requests)
   - Reuses `./scripts/ci.sh`
   - Runs prerequisites, version check, format/lint/tests/build
-- `release.yml` (tag push `vX.Y.Z`, plus manual dispatch)
+- `release.yml` (tag push `vX.Y.Z`)
   - Reuses `./scripts/release.sh`
   - Verifies tag version matches `VERSION`
-  - Builds macOS and Ubuntu Tauri artifacts and publishes a GitHub Release on tag runs
+  - Verifies `docs/releases/vX.Y.Z.md` exists for the tag being published
+  - Renders the GitHub release body from `.github/release-body.md`
+  - Builds macOS, Ubuntu, and Windows Tauri artifacts and publishes a GitHub Release on tag runs
 
 Release flow:
 
-1. Bump versions: `./scripts/version.sh set X.Y.Z`
-2. Commit and push
-3. Tag and push: `git tag vX.Y.Z && git push origin vX.Y.Z`
-4. `release.yml` builds artifacts and publishes the release
+1. Run the pre-flight verification suite: `./scripts/ci.sh --skip-prereqs`
+2. Bump versions: `./scripts/version.sh set X.Y.Z`
+3. Re-check version sync: `./scripts/version.sh check`
+4. Write release notes at `docs/releases/vX.Y.Z.md`
+5. Update release documentation links in `README.md` and `docs/README.md`
+6. Commit and push
+7. Tag and push: `git tag -a vX.Y.Z -m "Release vX.Y.Z" && git push origin main --tags`
+8. `release.yml` verifies the tag/doc contract, builds artifacts, renders the release body, and publishes the release
 
 Structured logging is enabled via `tracing`.
 
